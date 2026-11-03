@@ -361,7 +361,7 @@ nav { background:var(--surface); border-right:1px solid var(--border); padding:1
 // --- ИМПОРТЫ FIREBASE ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, setDoc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- ТВОЙ КОНФИГ ---
 const firebaseConfig = {
@@ -403,7 +403,6 @@ const VERIFIED = '<svg class="vb" viewBox="0 0 24 24"><circle cx="12" cy="12" r=
 
 const chatColors = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8", "#d4a04a"];
 let chats = []; 
-let unsubscribeMessages = null; // Для отписки от обновлений
 
 // --- ЛОГИКА АВТОРИЗАЦИИ ---
 onAuthStateChanged(auth, (user) => {
@@ -420,8 +419,6 @@ onAuthStateChanged(auth, (user) => {
 // --- РАБОТА С FIRESTORE ---
 async function loadChats() {
     if (!me) return;
-    
-    // Слушаем изменения в коллекции "chats" для текущего пользователя
     const q = query(collection(db, "users", me.uid, "chats"), orderBy("lastUpdated", "desc"));
     
     onSnapshot(q, (snapshot) => {
@@ -431,7 +428,6 @@ async function loadChats() {
             chats.push({ id: doc.id, ...data });
         });
         
-        // Добавляем фейковый чат поддержки, если его нет
         if (!chats.find(c => c.email === "support@ylola.ru")) {
             chats.push({ id: "support", email: "support@ylola.ru", alias: "", verified: true, color: "#2b6cdb", starred: true, unread: 1, messages: [
                 { me: false, text: { ru: "Здравствуйте! Приветствуем, что вы выбрали нашу почту. Пишите, если у вас остались вопросы.", en: "Hello! Welcome, and thank you for choosing our mail. Write to us if you have any questions." }, time: { ru: "09:00", en: "09:00" } } ] });
@@ -447,26 +443,20 @@ async function loadChats() {
 
 async function sendMessageToDb(chatId, text) {
     if (!me) return;
-    
-    // Если чата нет в базе, создаем его
     const chatRef = doc(db, "users", me.uid, "chats", chatId);
     const chatDoc = await getDoc(chatRef);
     
     if (!chatDoc.exists()) {
         await setDoc(chatRef, {
-            email: chatId + "@ylola.ru", // Упрощенно
+            email: chatId + "@ylola.ru",
             color: chatColors[Math.floor(Math.random() * chatColors.length)],
             lastUpdated: new Date(),
-            messages: [] // Массив сообщений внутри документа чата
+            messages: []
         });
     }
 
-    // Добавляем сообщение в массив
     const newMsg = { me: true, text, time: nowTime(), timestamp: new Date() };
     
-    // Используем транзакцию или просто обновляем массив (для простоты используем arrayUnion)
-    // В реальном проекте лучше использовать подколлекцию, но для теста сойдет и так.
-    const { arrayUnion, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
     await updateDoc(chatRef, {
         messages: arrayUnion(newMsg),
         lastUpdated: new Date()
@@ -528,7 +518,15 @@ function renderList() {
     </div>`;
   }).join("") : `<div class="empty">${t("empty")}</div>`;
 }
-function renderDrafts() { $("list").innerHTML = `<div class="empty">${t("noDrafts")}</div>`; }
+function renderDrafts() {
+  const mailRows = mailDrafts.map(d => `
+    <div class="row" data-draft="${d.id}">
+      <div class="avatar" style="background:#b8b0a6">✉</div>
+      <div class="row-body"><div class="row-top"><span class="row-name">${d.to || t("noRec")}</span></div>
+        <div class="row-last">${d.body || (d.files.length ? t("files") + ": " + d.files.length : "")}</div></div>
+    </div>`).join("");
+  $("list").innerHTML = mailRows || `<div class="empty">${t("noDrafts")}</div>`;
+}
 function renderServices() {
   const cols = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8"];
   const letters = ["К", "З", "С", "Ф"];
@@ -571,20 +569,80 @@ function closeChat() {
   renderList();
 }
 function pushMsg(c, msg) {
+  msg.status = navigator.onLine ? "sent" : "pending";
   if (!c.messages) c.messages = [];
   c.messages.push(msg);
   renderMessages(c);
   renderList();
-  // Отправляем в базу!
   sendMessageToDb(c.id, msg.text);
+  
+  if (msg.status === "sent") {
+    setTimeout(() => {
+      if (msg.status === "sent") { 
+        msg.status = "read"; 
+        if (currentId === c.id) renderMessages(c); 
+      }
+    }, 1500);
+  }
 }
 
+// --- ЛОГИКА СКРЕПКИ ---
+const attachKinds = ["photo", "video", "doc"];
+const attachAccept = { photo: "image/*", video: "video/*", doc: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.zip" };
+const attachInputs = {};
+attachKinds.forEach(k => {
+  const i = document.createElement("input");
+  i.type = "file"; i.multiple = true; i.accept = attachAccept[k]; i.style.display = "none";
+  document.body.appendChild(i);
+  i.onchange = () => { addFiles(k, [...i.files]); i.value = ""; };
+  attachInputs[k] = i;
+});
+const composeInput = document.createElement("input");
+composeInput.type = "file"; composeInput.multiple = true; composeInput.style.display = "none";
+composeInput.accept = "image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.zip";
+document.body.appendChild(composeInput);
+composeInput.onchange = () => {
+  [...composeInput.files].forEach(f => {
+    const kind = f.type.startsWith("image/") ? "photo" : f.type.startsWith("video/") ? "video" : "doc";
+    composeFiles.push({ kind, name: f.name, size: f.size, url: URL.createObjectURL(f) });
+  });
+  composeInput.value = "";
+  renderComposeFiles();
+};
 document.querySelectorAll("[data-clip]").forEach(el => el.innerHTML = CLIP);
+
+function addFiles(kind, files) {
+  const c = chats.find(x => x.id === currentId);
+  if (!c) return;
+  files.forEach(f => pushMsg(c, { me: true, text: "", time: nowTime(), file: { kind, name: f.name, size: f.size, url: URL.createObjectURL(f) } }));
+}
+
+$("clipBtn").onclick = e => { e.stopPropagation(); $("attachMenu").classList.toggle("open"); };
+document.querySelectorAll("#attachMenu button").forEach((b, i) => b.onclick = e => {
+  e.stopPropagation();
+  $("attachMenu").classList.remove("open");
+  attachInputs[attachKinds[i]].click();
+});
+$("cClip").onclick = () => composeInput.click();
+
 function renderComposeFiles() {
   $("cFiles").innerHTML = composeFiles.map(f => `<span class="chip">${{ photo: t("photo"), video: t("video"), doc: t("doc") }[f.kind]}: ${f.name}</span>`).join("");
 }
 function openCompose() { editingDraftId = null; $("compose").classList.add("open"); $("cStatus").textContent = ""; }
-function closeCompose() { $("compose").classList.remove("open"); }
+function closeCompose() {
+  const to = $("cTo").value.trim();
+  const body = $("cBody").value.trim();
+  if (to || body || composeFiles.length) {
+    const draft = { id: editingDraftId !== null ? editingDraftId : Date.now(), to, body, files: composeFiles.slice() };
+    if (editingDraftId !== null) mailDrafts = mailDrafts.map(d => (d.id === editingDraftId ? draft : d));
+    else mailDrafts.push(draft);
+  }
+  editingDraftId = null;
+  $("compose").classList.remove("open");
+  $("cTo").value = ""; $("cBody").value = ""; composeFiles = [];
+  renderComposeFiles();
+  if (filter === "drafts") renderList();
+}
 
 function loginAs(u) {
   me = u;
@@ -634,7 +692,9 @@ document.querySelectorAll(".folder").forEach(f => f.onclick = () => {
 });
 $("list").addEventListener("click", e => {
   const row = e.target.closest(".row");
-  if (row && row.dataset.id) openChat(row.dataset.id);
+  if (!row) return;
+  if (row.dataset.draft) openDraft(Number(row.dataset.draft));
+  else if (row.dataset.id) openChat(row.dataset.id);
 });
 $("back").onclick = closeChat;
 $("form").addEventListener("submit", e => {
@@ -647,7 +707,13 @@ $("form").addEventListener("submit", e => {
 });
 $("fab").onclick = openCompose;
 $("composeClose").onclick = closeCompose;
-$("composeSend").onclick = () => { $("compose").classList.remove("open"); };
+$("composeSend").onclick = () => { 
+  if (editingDraftId !== null) mailDrafts = mailDrafts.filter(d => d.id !== editingDraftId);
+  editingDraftId = null;
+  $("compose").classList.remove("open"); 
+  $("cTo").value = ""; $("cBody").value = ""; composeFiles = [];
+  renderComposeFiles();
+};
 
 $("meBtn").onclick = e => { e.stopPropagation(); $("profileMenu").classList.toggle("open"); };
 $("profileMenu").onclick = e => e.stopPropagation();
@@ -682,14 +748,11 @@ $("wizX").onclick = closeWizard;
 document.querySelectorAll(".next").forEach(b => b.onclick = () => { if (validateStep(wizStep)) showStep(wizStep + 1); });
 $("wizBack").onclick = () => showStep(Math.max(0, wizStep - 1));
 
-// --- РЕГИСТРАЦИЯ В FIREBASE ---
 $("rDone").onclick = async () => {
   const pass = $("rPass").value;
   if (pass.length < 8) { $("e3").textContent = t("errPass"); return; }
   if (!$("rBot").checked) { $("e3").textContent = t("errBot"); return; }
-  
   const firebaseEmail = `${wizNick}@gmail.com`; 
-
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, pass);
     await setDoc(doc(db, "users", userCredential.user.uid), {
@@ -698,7 +761,6 @@ $("rDone").onclick = async () => {
       last: $("rLast").value.trim(),
       email: `${wizNick}@ylola.ru`
     });
-    
     $("rPass").value = ""; $("rBot").checked = false; $("e3").textContent = "";
     $("wizBg").classList.remove("open");
   } catch (error) {
@@ -706,12 +768,10 @@ $("rDone").onclick = async () => {
   }
 };
 
-// --- ВХОД В FIREBASE ---
 $("loginBtn").onclick = async () => {
   const nick = $("lNick").value.trim().toLowerCase();
   const pass = $("lPass").value;
   const firebaseEmail = `${nick}@gmail.com`; 
-  
   try {
     await signInWithEmailAndPassword(auth, firebaseEmail, pass);
     $("lErr").textContent = "";
