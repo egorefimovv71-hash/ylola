@@ -416,9 +416,10 @@ onAuthStateChanged(auth, (user) => {
 // --- БАЗА ДАННЫХ ---
 async function loadChats() {
     if (!me) return;
-    const q = query(collection(db, "users", me.uid, "chats"), orderBy("lastUpdated", "desc"));
     
-    onSnapshot(q, (snapshot) => {
+    // Загружаем чаты
+    const qChats = query(collection(db, "users", me.uid, "chats"), orderBy("lastUpdated", "desc"));
+    onSnapshot(qChats, (snapshot) => {
         chats = [];
         snapshot.forEach((doc) => {
             chats.push({ id: doc.id, ...doc.data() });
@@ -441,6 +442,16 @@ async function loadChats() {
             const c = chats.find(x => x.id === currentId);
             if (c) renderMessages(c);
         }
+    });
+
+    // Загружаем черновики из базы!
+    const qDrafts = query(collection(db, "users", me.uid, "drafts"), orderBy("id", "desc"));
+    onSnapshot(qDrafts, (snapshot) => {
+        mailDrafts = [];
+        snapshot.forEach((doc) => {
+            mailDrafts.push({ id: doc.id, ...doc.data() });
+        });
+        if (filter === "drafts") renderList();
     });
 }
 
@@ -650,30 +661,30 @@ function openCompose() {
   $("cStatus").textContent = ""; 
 }
 
-function closeCompose() {
+async function closeCompose() {
   const to = $("cTo").value.trim();
   const body = $("cBody").value.trim();
+  
   if (to || body || composeFiles.length) {
-    const draft = { id: editingDraftId !== null ? editingDraftId : Date.now(), to, body, files: composeFiles.slice() };
-    if (editingDraftId !== null) mailDrafts = mailDrafts.map(d => (d.id === editingDraftId ? draft : d));
-    else mailDrafts.push(draft);
-    // Если мы закрываем черновик, сразу обновляем список в папке "Черновики"
-    if (filter === "drafts") renderList();
+    const draftData = { 
+        to: to, 
+        body: body, 
+        files: composeFiles.map(f => ({ kind: f.kind, name: f.name, size: f.size })) // url не сохраняем, он временный
+    };
+    
+    if (editingDraftId) {
+        // Обновляем существующий
+        await setDoc(doc(db, "users", me.uid, "drafts", editingDraftId.toString()), draftData);
+    } else {
+        // Создаем новый
+        const newDoc = doc(collection(db, "users", me.uid, "drafts"));
+        await setDoc(newDoc, draftData);
+    }
   }
+  
   editingDraftId = null;
   $("compose").classList.remove("open");
   $("cTo").value = ""; $("cBody").value = ""; composeFiles = [];
-  renderComposeFiles();
-}
-
-function openDraft(id) {
-  const d = mailDrafts.find(x => x.id === id);
-  if (!d) return;
-  openCompose();
-  editingDraftId = id;
-  $("cTo").value = d.to;
-  $("cBody").value = d.body;
-  composeFiles = d.files.slice();
   renderComposeFiles();
 }
 
