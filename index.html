@@ -210,16 +210,13 @@ nav { background:var(--surface); border-right:1px solid var(--border); padding:1
     <div><strong id="chatName"></strong><small id="chatSub"></small></div>
   </div>
   <div class="messages" id="messages"></div>
-  <form class="input-row" id="form" autocomplete="off">
+    <form class="input-row" id="form" autocomplete="off">
+    <input id="msgInput" data-ph-ru="Сообщение" data-ph-en="Message">
+    
     <span class="clip-wrap">
       <button class="clip" type="button" id="clipBtn" data-clip aria-label="Attach"></button>
-      <div class="attach-menu" id="attachMenu">
-        <button type="button"><span class="l-ru">Фото</span><span class="l-en">Photo</span></button>
-        <button type="button"><span class="l-ru">Видео</span><span class="l-en">Video</span></button>
-        <button type="button"><span class="l-ru">Документ</span><span class="l-en">Document</span></button>
-      </div>
     </span>
-    <input id="msgInput" data-ph-ru="Сообщение" data-ph-en="Message">
+
     <button class="send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M3 11.5L21 4l-6 17-3.5-6.5L3 11.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
   </form>
 </section>
@@ -427,7 +424,6 @@ async function loadChats() {
             chats.push({ id: doc.id, ...doc.data() });
         });
         
-        // Восстанавливаем чат поддержки, если он потерялся или сломался
         let supportChat = chats.find(c => c.id === "support");
         if (!supportChat) {
             supportChat = { 
@@ -436,7 +432,6 @@ async function loadChats() {
             };
             chats.push(supportChat);
         } else {
-            // Принудительно возвращаем цвет и галочку, даже если Firebase их стер
             supportChat.verified = true;
             supportChat.color = "#2b6cdb";
         }
@@ -458,7 +453,7 @@ async function sendMessageToDb(chatId, text) {
         await setDoc(chatRef, {
             email: chatId === "support" ? "support@ylola.ru" : chatId + "@ylola.ru",
             color: chatId === "support" ? "#2b6cdb" : chatColors[Math.floor(Math.random() * chatColors.length)],
-            verified: chatId === "support" ? true : false, // Записываем галочку в базу
+            verified: chatId === "support" ? true : false, 
             lastUpdated: new Date(),
             messages: []
         });
@@ -606,20 +601,28 @@ function pushMsg(c, msg) {
 }
 
 // --- СКРЕПКА И ФАЙЛЫ ---
-const attachKinds = ["photo", "video", "doc"];
-const attachAccept = { photo: "image/*", video: "video/*", doc: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.zip" };
-const attachInputs = {};
-attachKinds.forEach(k => {
-  const i = document.createElement("input");
-  i.type = "file"; i.multiple = true; i.accept = attachAccept[k]; i.style.display = "none";
-  document.body.appendChild(i);
-  i.onchange = () => { addFiles(k, [...i.files]); i.value = ""; };
-  attachInputs[k] = i;
-});
+// Теперь при клике сразу открывается проводник
+const fileInput = document.createElement("input");
+fileInput.type = "file"; 
+fileInput.multiple = true; 
+fileInput.style.display = "none";
+document.body.appendChild(fileInput);
+fileInput.onchange = () => { 
+    const c = chats.find(x => x.id === currentId);
+    if (c && fileInput.files.length) {
+        const files = [...fileInput.files];
+        files.forEach(f => {
+            const kind = f.type.startsWith("image/") ? "photo" : f.type.startsWith("video/") ? "video" : "doc";
+            pushMsg(c, { me: true, text: "", time: nowTime(), file: { kind, name: f.name, size: f.size, url: URL.createObjectURL(f) } });
+        });
+    }
+    fileInput.value = ""; 
+};
 
 const composeInput = document.createElement("input");
-composeInput.type = "file"; composeInput.multiple = true; composeInput.style.display = "none";
-composeInput.accept = "image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.zip";
+composeInput.type = "file"; 
+composeInput.multiple = true; 
+composeInput.style.display = "none";
 document.body.appendChild(composeInput);
 composeInput.onchange = () => {
   [...composeInput.files].forEach(f => {
@@ -632,19 +635,9 @@ composeInput.onchange = () => {
 
 document.querySelectorAll("[data-clip]").forEach(el => el.innerHTML = CLIP);
 
-function addFiles(kind, files) {
-  const c = chats.find(x => x.id === currentId);
-  if (!c) return;
-  files.forEach(f => pushMsg(c, { me: true, text: "", time: nowTime(), file: { kind, name: f.name, size: f.size, url: URL.createObjectURL(f) } }));
-}
-
-$("clipBtn").onclick = e => { e.stopPropagation(); $("attachMenu").classList.toggle("open"); };
-document.querySelectorAll("#attachMenu button").forEach((b, i) => b.onclick = e => {
-  e.stopPropagation();
-  $("attachMenu").classList.remove("open");
-  attachInputs[attachKinds[i]].click();
-});
-$("cClip").onclick = () => composeInput.click();
+// Привязка скрепок напрямую к открытию проводника
+$("clipBtn").onclick = (e) => { e.preventDefault(); fileInput.click(); };
+$("cClip").onclick = (e) => { e.preventDefault(); composeInput.click(); };
 
 // --- ЧЕРНОВИКИ ---
 function renderComposeFiles() {
@@ -664,12 +657,13 @@ function closeCompose() {
     const draft = { id: editingDraftId !== null ? editingDraftId : Date.now(), to, body, files: composeFiles.slice() };
     if (editingDraftId !== null) mailDrafts = mailDrafts.map(d => (d.id === editingDraftId ? draft : d));
     else mailDrafts.push(draft);
+    // Если мы закрываем черновик, сразу обновляем список в папке "Черновики"
+    if (filter === "drafts") renderList();
   }
   editingDraftId = null;
   $("compose").classList.remove("open");
   $("cTo").value = ""; $("cBody").value = ""; composeFiles = [];
   renderComposeFiles();
-  if (filter === "drafts") renderList();
 }
 
 function openDraft(id) {
