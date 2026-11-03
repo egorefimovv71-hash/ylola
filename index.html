@@ -213,14 +213,6 @@ nav { background:var(--surface); border-right:1px solid var(--border); padding:1
     <form class="input-row" id="form" autocomplete="off">
     <input id="msgInput" data-ph-ru="Сообщение" data-ph-en="Message">
     
-    <span class="clip-wrap">
-      <button class="clip" type="button" id="clipBtn" data-clip aria-label="Attach"></button>
-    </span>
-
-    <button class="send" type="submit" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M3 11.5L21 4l-6 17-3.5-6.5L3 11.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
-  </form>
-</section>
-
 <div class="auth" id="auth">
   <button class="lang-btn" id="authLang" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>EN</span></button>
   <div class="auth-wrap">
@@ -355,12 +347,11 @@ nav { background:var(--surface); border-right:1px solid var(--border); padding:1
 </div></div>
 
 <script type="module">
-// --- ИМПОРТЫ FIREBASE ---
+// --- ИМПОРТЫ FIREBASE (без Storage) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, getDoc, updateDoc, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// --- КОНФИГ ---
 const firebaseConfig = {
   apiKey: "AIzaSyBbYAL7nd_P1iZFvQq_ZvaVr98JkaAFBGw",
   authDomain: "ylola-mail.firebaseapp.com",
@@ -376,32 +367,30 @@ const db = getFirestore(app);
 
 const $ = id => document.getElementById(id);
 const T = {
-  ru: { empty: "Чатов нет", noDrafts: "Черновиков нет", noRec: "Без получателя", files: "Файлов", draft: "Черновик", you: "Ты: ", coming: "Скоро будет",
+  ru: { empty: "Чатов нет", noDrafts: "Черновиков нет", noRec: "Без получателя", draft: "Черновик", you: "Ты: ", coming: "Скоро будет",
         errContent: "Напишите сообщение", errDate: "Выберите дату рождения", errFirst: "Введите имя", errLast: "Введите фамилию",
         errNick: "Минимум 5 символов", errTaken: "Ник занят", errPass: "Пароль минимум 8 символов", errBot: "Вы не робот?",
-        errLogin: "Неверный ник или пароль", photo: "Фото", video: "Видео", doc: "Документ",
+        errLogin: "Неверный ник или пароль",
         months: ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"], day: "День", month: "Месяц", year: "Год",
         svc: ["Календарь","Заметки","Список покупок","Фотоальбом"] },
-  en: { empty: "No chats", noDrafts: "No drafts", noRec: "No recipient", files: "Files", draft: "Draft", you: "You: ", coming: "Coming soon",
+  en: { empty: "No chats", noDrafts: "No drafts", noRec: "No recipient", draft: "Draft", you: "You: ", coming: "Coming soon",
         errContent: "Write a message", errDate: "Choose date", errFirst: "Enter first name", errLast: "Enter last name",
         errNick: "Min 5 chars", errTaken: "Nick taken", errPass: "Password min 8 chars", errBot: "Are you a robot?",
-        errLogin: "Wrong login", photo: "Photo", video: "Video", doc: "Document",
+        errLogin: "Wrong login",
         months: ["January","February","March","April","May","June","July","August","September","October","November","December"], day: "Day", month: "Month", year: "Year",
         svc: ["Calendar","Notes","Shopping list","Photo album"] }
 };
-let lang = "ru", theme = "light", filter = "all", currentId = null, composeFiles = [], mailDrafts = [], editingDraftId = null, me = null, wizStep = 0, wizNick = "", addMode = false;
+let lang = "ru", theme = "light", filter = "all", currentId = null, mailDrafts = [], editingDraftId = null, me = null, wizStep = 0, wizNick = "", addMode = false;
 const t = k => T[lang][k];
 const L = v => (v && typeof v === "object" ? v[lang] : v);
 const nameOf = c => c.alias || c.email;
 const initial = s => s[0].toUpperCase();
 const nowTime = () => new Date().toLocaleTimeString(lang === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" });
-const CLIP = '<span class="clip-icon"><div class="paperclip"><div class="paperclip-line outer"></div><div class="paperclip-line middle"></div><div class="paperclip-line inner"></div></div></span>';
 const VERIFIED = '<svg class="vb" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#2b6cdb"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const chatColors = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8", "#d4a04a"];
 
 let chats = []; 
 
-// --- АВТОРИЗАЦИЯ ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
         me = { nick: user.email.split('@')[0], first: "User", last: "", uid: user.uid }; 
@@ -413,18 +402,14 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// --- ЗАГРУЗКА ДАННЫХ ---
 function loadData() {
     if (!me) return;
-    
-    // 1. Загрузка чатов
     const qChats = query(collection(db, "users", me.uid, "chats"), orderBy("lastUpdated", "desc"));
     onSnapshot(qChats, (snapshot) => {
         chats = [];
         snapshot.forEach((doc) => {
             chats.push({ id: doc.id, ...doc.data() });
         });
-        
         let supportChat = chats.find(c => c.id === "support");
         if (!supportChat) {
             supportChat = { 
@@ -436,7 +421,6 @@ function loadData() {
             supportChat.verified = true;
             supportChat.color = "#2b6cdb";
         }
-        
         renderList();
         if (currentId) {
             const c = chats.find(x => x.id === currentId);
@@ -444,7 +428,6 @@ function loadData() {
         }
     });
 
-    // 2. Загрузка черновиков (из Firebase!)
     const qDrafts = query(collection(db, "users", me.uid, "drafts"));
     onSnapshot(qDrafts, (snapshot) => {
         mailDrafts = [];
@@ -477,14 +460,13 @@ async function sendMessageToDb(chatId, text) {
     });
 }
 
-// --- ИНТЕРФЕЙС ---
 function setLang(l) {
   lang = l;
   document.documentElement.lang = l;
   document.querySelectorAll("[data-ph-ru]").forEach(el => el.placeholder = el.getAttribute("data-ph-" + l));
   document.querySelectorAll("[data-lang-set]").forEach(b => b.classList.toggle("on", b.dataset.langSet === l));
   $("authLang").querySelector("span").textContent = l === "ru" ? "EN" : "RU";
-  fillDates(); renderList(); renderComposeFiles();
+  fillDates(); renderList();
   const c = chats.find(x => x.id === currentId);
   if (c) { openChatHeader(c); renderMessages(c); }
 }
@@ -507,14 +489,6 @@ function statusHtml(m) {
   return '<svg class="st" viewBox="0 0 16 11"><path d="M1 5.5L5 9.5L15 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
-function fmtSize(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
-function fileHtml(f) {
-  if (f.kind === "photo") return `<img src="${f.url}" alt="${f.name}" class="att-img">`;
-  if (f.kind === "video") return `<video src="${f.url}" controls class="att-img"></video>`;
-  return `<a class="att-doc" href="${f.url}" download="${f.name}">📄 ${f.name}<small>${fmtSize(f.size)}</small></a>`;
-}
-function lastLabel(m) { return m.file ? { photo: t("photo"), video: t("video"), doc: t("doc") }[m.file.kind] : ""; }
-
 function renderList() {
   if (filter === "services") return renderServices();
   if (filter === "drafts") return renderDrafts();
@@ -524,13 +498,12 @@ function renderList() {
     nameOf(c).toLowerCase().includes(q));
   $("list").innerHTML = items.length ? items.map(c => {
     const last = c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1] : { text: "...", time: nowTime() };
-    const preview = last.file ? lastLabel(last) : L(last.text);
     return `
     <div class="row" data-id="${c.id}">
       <div class="avatar" style="background:${c.color}">${initial(nameOf(c))}</div>
       <div class="row-body">
         <div class="row-top"><span class="row-name">${nameOf(c)}${c.verified ? VERIFIED : ""}</span><span class="row-time">${L(last.time)}</span></div>
-        <div class="row-last">${last.me ? t("you") : ""}${preview}</div>
+        <div class="row-last">${last.me ? t("you") : ""}${L(last.text)}</div>
       </div>
       ${c.unread ? `<span class="badge">${c.unread}</span>` : ""}
     </div>`;
@@ -545,7 +518,7 @@ function renderDrafts() {
     <div class="row" data-draft="${d.id}">
       <div class="avatar" style="background:#b8b0a6">✉</div>
       <div class="row-body"><div class="row-top"><span class="row-name">${d.to || t("noRec")}</span></div>
-        <div class="row-last">${d.body || (d.files && d.files.length ? t("files") + ": " + d.files.length : "")}</div></div>
+        <div class="row-last">${d.body}</div></div>
     </div>`).join("");
 }
 
@@ -563,7 +536,7 @@ function renderMessages(c) {
   if (!c.messages) c.messages = [];
   $("messages").innerHTML = c.messages.map(m => `
     <div class="msg ${m.me ? "me" : "them"}">
-      ${m.file ? fileHtml(m.file) : L(m.text)}
+      ${L(m.text)}
       <div class="msg-time">${L(m.time)}${m.me ? statusHtml(m) : ""}</div>
     </div>`).join("");
   $("messages").scrollTop = $("messages").scrollHeight;
@@ -594,14 +567,14 @@ function closeChat() {
   renderList();
 }
 
-function pushMsg(c, msg) {
+async function pushMsg(c, msg) {
   msg.status = navigator.onLine ? "sent" : "pending";
   if (!c.messages) c.messages = [];
   c.messages.push(msg);
   renderMessages(c);
   renderList();
   
-  if (msg.text) sendMessageToDb(c.id, msg.text);
+  await sendMessageToDb(c.id, msg.text);
   
   if (msg.status === "sent") {
     setTimeout(() => {
@@ -613,64 +586,20 @@ function pushMsg(c, msg) {
   }
 }
 
-// --- СКРЕПКА ---
-const fileInput = document.createElement("input");
-fileInput.type = "file"; fileInput.multiple = true; fileInput.style.display = "none";
-document.body.appendChild(fileInput);
-fileInput.onchange = () => { 
-    const c = chats.find(x => x.id === currentId);
-    if (c && fileInput.files.length) {
-        [...fileInput.files].forEach(f => {
-            const kind = f.type.startsWith("image/") ? "photo" : f.type.startsWith("video/") ? "video" : "doc";
-            pushMsg(c, { me: true, text: "", time: nowTime(), file: { kind, name: f.name, size: f.size, url: URL.createObjectURL(f) } });
-        });
-    }
-    fileInput.value = ""; 
-};
-
-const composeInput = document.createElement("input");
-composeInput.type = "file"; composeInput.multiple = true; composeInput.style.display = "none";
-document.body.appendChild(composeInput);
-composeInput.onchange = () => {
-  [...composeInput.files].forEach(f => {
-    const kind = f.type.startsWith("image/") ? "photo" : f.type.startsWith("video/") ? "video" : "doc";
-    composeFiles.push({ kind, name: f.name, size: f.size, url: URL.createObjectURL(f) });
-  });
-  composeInput.value = "";
-  renderComposeFiles();
-};
-
-document.querySelectorAll("[data-clip]").forEach(el => el.innerHTML = CLIP);
-$("clipBtn").onclick = (e) => { e.preventDefault(); fileInput.click(); };
-$("cClip").onclick = (e) => { e.preventDefault(); composeInput.click(); };
-
 // --- ЧЕРНОВИКИ ---
-function renderComposeFiles() {
-  $("cFiles").innerHTML = composeFiles.map(f => `<span class="chip">${{ photo: t("photo"), video: t("video"), doc: t("doc") }[f.kind]}: ${f.name}</span>`).join("");
-}
-
 function openCompose() { 
   editingDraftId = null; 
   $("compose").classList.add("open"); 
   $("cStatus").textContent = "";
-  $("cTo").value = "";
-  $("cBody").value = "";
-  composeFiles = [];
-  renderComposeFiles();
+  $("cTo").value = ""; $("cBody").value = "";
 }
 
 async function closeCompose() {
   const to = $("cTo").value.trim();
   const body = $("cBody").value.trim();
   
-  if (to || body || composeFiles.length) {
-    const draftData = { 
-        to: to, 
-        body: body, 
-        files: composeFiles.map(f => ({ kind: f.kind, name: f.name, size: f.size }))
-    };
-    
-    // Сохраняем в Firebase!
+  if (to || body) {
+    const draftData = { to, body };
     if (editingDraftId) {
         await setDoc(doc(db, "users", me.uid, "drafts", editingDraftId.toString()), draftData);
     } else {
@@ -678,11 +607,9 @@ async function closeCompose() {
         await setDoc(newDocRef, draftData);
     }
   }
-  
   editingDraftId = null;
   $("compose").classList.remove("open");
-  $("cTo").value = ""; $("cBody").value = ""; composeFiles = [];
-  renderComposeFiles();
+  $("cTo").value = ""; $("cBody").value = "";
 }
 
 function openDraft(id) {
@@ -692,8 +619,6 @@ function openDraft(id) {
   editingDraftId = id;
   $("cTo").value = d.to;
   $("cBody").value = d.body;
-  composeFiles = d.files ? d.files : [];
-  renderComposeFiles();
 }
 
 // --- АВТОРИЗАЦИЯ ---
@@ -757,27 +682,25 @@ $("list").addEventListener("click", e => {
 
 $("back").onclick = closeChat;
 
-$("form").addEventListener("submit", e => {
+$("form").addEventListener("submit", async e => {
   e.preventDefault();
   const text = $("msgInput").value.trim();
   const c = chats.find(x => x.id === currentId);
   if (!text || !c) return;
-  pushMsg(c, { me: true, text, time: nowTime() });
+  await pushMsg(c, { me: true, text, time: nowTime() });
   $("msgInput").value = "";
 });
 
 $("fab").onclick = openCompose;
 $("composeClose").onclick = closeCompose;
 
-// Отправка письма (удаляем черновик, если отправляем)
 $("composeSend").onclick = async () => { 
   if (editingDraftId) {
       try { await deleteDoc(doc(db, "users", me.uid, "drafts", editingDraftId.toString())); } catch(e) {}
   }
   editingDraftId = null;
   $("compose").classList.remove("open"); 
-  $("cTo").value = ""; $("cBody").value = ""; composeFiles = [];
-  renderComposeFiles();
+  $("cTo").value = ""; $("cBody").value = "";
 };
 
 $("meBtn").onclick = e => { e.stopPropagation(); $("profileMenu").classList.toggle("open"); };
