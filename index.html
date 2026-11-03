@@ -361,7 +361,7 @@ nav { background:var(--surface); border-right:1px solid var(--border); padding:1
 // --- ИМПОРТЫ FIREBASE ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- ТВОЙ КОНФИГ ---
 const firebaseConfig = {
@@ -393,7 +393,6 @@ const T = {
         svc: ["Calendar","Notes","Shopping list","Photo album"], sent: "Sent", read: "Read", pending: "Waiting for internet" }
 };
 let lang = "ru", theme = "light", filter = "all", currentId = null, composeFiles = [], mailDrafts = [], editingDraftId = null, me = null, wizStep = 0, wizNick = "", addMode = false;
-const accountsAdded = [];
 const t = k => T[lang][k];
 const L = v => (v && typeof v === "object" ? v[lang] : v);
 const nameOf = c => c.alias || c.email;
@@ -403,12 +402,13 @@ const CLIP = '<span class="clip-icon"><div class="paperclip"><div class="papercl
 const VERIFIED = '<svg class="vb" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#2b6cdb"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const chatColors = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8", "#d4a04a"];
-let chats = []; // Будем загружать из Firebase
+let chats = []; 
+let unsubscribeMessages = null; // Для отписки от обновлений
 
 // --- ЛОГИКА АВТОРИЗАЦИИ ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        me = { nick: user.email.split('@')[0], first: "User", last: "", pass: "********" }; 
+        me = { nick: user.email.split('@')[0], first: "User", last: "", uid: user.uid }; 
         loginAs(me);
         loadChats(); 
     } else {
@@ -417,13 +417,60 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// --- ФУНКЦИИ БАЗЫ ДАННЫХ ---
+// --- РАБОТА С FIRESTORE ---
 async function loadChats() {
-    chats = [
-      { id: 0, email: "support@ylola.ru", alias: "", verified: true, color: "#2b6cdb", starred: true, unread: 1, messages: [
-        { me: false, text: { ru: "Здравствуйте! Приветствуем, что вы выбрали нашу почту. Пишите, если у вас остались вопросы.", en: "Hello! Welcome, and thank you for choosing our mail. Write to us if you have any questions." }, time: { ru: "09:00", en: "09:00" } } ] }
-    ];
-    renderList();
+    if (!me) return;
+    
+    // Слушаем изменения в коллекции "chats" для текущего пользователя
+    const q = query(collection(db, "users", me.uid, "chats"), orderBy("lastUpdated", "desc"));
+    
+    onSnapshot(q, (snapshot) => {
+        chats = [];
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            chats.push({ id: doc.id, ...data });
+        });
+        
+        // Добавляем фейковый чат поддержки, если его нет
+        if (!chats.find(c => c.email === "support@ylola.ru")) {
+            chats.push({ id: "support", email: "support@ylola.ru", alias: "", verified: true, color: "#2b6cdb", starred: true, unread: 1, messages: [
+                { me: false, text: { ru: "Здравствуйте! Приветствуем, что вы выбрали нашу почту. Пишите, если у вас остались вопросы.", en: "Hello! Welcome, and thank you for choosing our mail. Write to us if you have any questions." }, time: { ru: "09:00", en: "09:00" } } ] });
+        }
+        
+        renderList();
+        if (currentId) {
+            const c = chats.find(x => x.id === currentId);
+            if (c) renderMessages(c);
+        }
+    });
+}
+
+async function sendMessageToDb(chatId, text) {
+    if (!me) return;
+    
+    // Если чата нет в базе, создаем его
+    const chatRef = doc(db, "users", me.uid, "chats", chatId);
+    const chatDoc = await getDoc(chatRef);
+    
+    if (!chatDoc.exists()) {
+        await setDoc(chatRef, {
+            email: chatId + "@ylola.ru", // Упрощенно
+            color: chatColors[Math.floor(Math.random() * chatColors.length)],
+            lastUpdated: new Date(),
+            messages: [] // Массив сообщений внутри документа чата
+        });
+    }
+
+    // Добавляем сообщение в массив
+    const newMsg = { me: true, text, time: nowTime(), timestamp: new Date() };
+    
+    // Используем транзакцию или просто обновляем массив (для простоты используем arrayUnion)
+    // В реальном проекте лучше использовать подколлекцию, но для теста сойдет и так.
+    const { arrayUnion, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+    await updateDoc(chatRef, {
+        messages: arrayUnion(newMsg),
+        lastUpdated: new Date()
+    });
 }
 
 function setLang(l) {
@@ -468,8 +515,7 @@ function renderList() {
     (filter === "all" || (filter === "unread" && c.unread > 0) || (filter === "starred" && c.starred)) &&
     nameOf(c).toLowerCase().includes(q));
   $("list").innerHTML = items.length ? items.map(c => {
-    const last = c.messages[c.messages.length - 1];
-    if (!last) return "";
+    const last = c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1] : { text: "...", time: nowTime() };
     const preview = last.file ? lastLabel(last) : L(last.text);
     return `
     <div class="row" data-id="${c.id}">
@@ -494,6 +540,7 @@ function renderServices() {
 }
 
 function renderMessages(c) {
+  if (!c.messages) c.messages = [];
   $("messages").innerHTML = c.messages.map(m => `
     <div class="msg ${m.me ? "me" : "them"}">
       ${m.file ? fileHtml(m.file) : L(m.text)}
@@ -524,9 +571,12 @@ function closeChat() {
   renderList();
 }
 function pushMsg(c, msg) {
+  if (!c.messages) c.messages = [];
   c.messages.push(msg);
   renderMessages(c);
   renderList();
+  // Отправляем в базу!
+  sendMessageToDb(c.id, msg.text);
 }
 
 document.querySelectorAll("[data-clip]").forEach(el => el.innerHTML = CLIP);
@@ -584,7 +634,7 @@ document.querySelectorAll(".folder").forEach(f => f.onclick = () => {
 });
 $("list").addEventListener("click", e => {
   const row = e.target.closest(".row");
-  if (row && row.dataset.id) openChat(Number(row.dataset.id));
+  if (row && row.dataset.id) openChat(row.dataset.id);
 });
 $("back").onclick = closeChat;
 $("form").addEventListener("submit", e => {
@@ -638,13 +688,10 @@ $("rDone").onclick = async () => {
   if (pass.length < 8) { $("e3").textContent = t("errPass"); return; }
   if (!$("rBot").checked) { $("e3").textContent = t("errBot"); return; }
   
-  // Firebase требует реальный email. Для теста используем gmail. 
-  // Потом можно будет привязать свой домен.
   const firebaseEmail = `${wizNick}@gmail.com`; 
 
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, pass);
-    // Сохраняем доп. данные (имя, ник) в Firestore
     await setDoc(doc(db, "users", userCredential.user.uid), {
       nick: wizNick,
       first: $("rFirst").value.trim(),
@@ -654,7 +701,6 @@ $("rDone").onclick = async () => {
     
     $("rPass").value = ""; $("rBot").checked = false; $("e3").textContent = "";
     $("wizBg").classList.remove("open");
-    // loginAs вызовется автоматически через onAuthStateChanged
   } catch (error) {
     $("e3").textContent = "Ошибка: " + error.message;
   }
@@ -664,7 +710,7 @@ $("rDone").onclick = async () => {
 $("loginBtn").onclick = async () => {
   const nick = $("lNick").value.trim().toLowerCase();
   const pass = $("lPass").value;
-  const firebaseEmail = `${nick}@gmail.com`; // Тот же фейковый формат для теста
+  const firebaseEmail = `${nick}@gmail.com`; 
   
   try {
     await signInWithEmailAndPassword(auth, firebaseEmail, pass);
