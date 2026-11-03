@@ -361,9 +361,9 @@ nav { background:var(--surface); border-right:1px solid var(--border); padding:1
 // --- ИМПОРТЫ FIREBASE ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, setDoc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// --- ТВОЙ КОНФИГ ---
+// --- КОНФИГ ---
 const firebaseConfig = {
   apiKey: "AIzaSyBbYAL7nd_P1iZFvQq_ZvaVr98JkaAFBGw",
   authDomain: "ylola-mail.firebaseapp.com",
@@ -379,18 +379,18 @@ const db = getFirestore(app);
 
 const $ = id => document.getElementById(id);
 const T = {
-  ru: { empty: "Чатов нет", noDrafts: "Черновиков нет", noRec: "Без получателя", files: "Файлов", draft: "Черновик", you: "Ты: ", online: "в сети", coming: "Скоро будет",
-        errContent: "Напишите сообщение или прикрепите файл", errEmail: "Введите почту, например name@ylola.ru", errDate: "Выберите дату рождения", errFirst: "Введите имя", errLast: "Введите фамилию",
-        errNick: "Минимум 5 символов: латинские буквы, цифры, точка или дефис", errTaken: "Такой ник уже занят", errPass: "Пароль минимум 8 символов", errBot: "Подтвердите, что вы не робот",
-        errLogin: "Неверный ник или пароль", errCur: "Неверный текущий пароль", errMatch: "Пароли не совпадают", pwOk: "Пароль обновлён", photo: "Фото", video: "Видео", doc: "Документ",
+  ru: { empty: "Чатов нет", noDrafts: "Черновиков нет", noRec: "Без получателя", files: "Файлов", draft: "Черновик", you: "Ты: ", coming: "Скоро будет",
+        errContent: "Напишите сообщение", errDate: "Выберите дату рождения", errFirst: "Введите имя", errLast: "Введите фамилию",
+        errNick: "Минимум 5 символов", errTaken: "Ник занят", errPass: "Пароль минимум 8 символов", errBot: "Вы не робот?",
+        errLogin: "Неверный ник или пароль", photo: "Фото", video: "Видео", doc: "Документ",
         months: ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"], day: "День", month: "Месяц", year: "Год",
-        svc: ["Календарь","Заметки","Список покупок","Фотоальбом"], sent: "Отправлено", read: "Прочитано", pending: "Ждёт интернета" },
-  en: { empty: "No chats", noDrafts: "No drafts", noRec: "No recipient", files: "Files", draft: "Draft", you: "You: ", online: "online", coming: "Coming soon",
-        errContent: "Write a message or attach a file", errEmail: "Enter an email, e.g. name@ylola.ru", errDate: "Choose your date of birth", errFirst: "Enter your first name", errLast: "Enter your last name",
-        errNick: "At least 5 characters: Latin letters, digits, dot or dash", errTaken: "This nickname is taken", errPass: "Password must be at least 8 characters", errBot: "Please confirm you're not a robot",
-        errLogin: "Wrong nickname or password", errCur: "Wrong current password", errMatch: "Passwords don't match", pwOk: "Password updated", photo: "Photo", video: "Video", doc: "Document",
+        svc: ["Календарь","Заметки","Список покупок","Фотоальбом"] },
+  en: { empty: "No chats", noDrafts: "No drafts", noRec: "No recipient", files: "Files", draft: "Draft", you: "You: ", coming: "Coming soon",
+        errContent: "Write a message", errDate: "Choose date", errFirst: "Enter first name", errLast: "Enter last name",
+        errNick: "Min 5 chars", errTaken: "Nick taken", errPass: "Password min 8 chars", errBot: "Are you a robot?",
+        errLogin: "Wrong login", photo: "Photo", video: "Video", doc: "Document",
         months: ["January","February","March","April","May","June","July","August","September","October","November","December"], day: "Day", month: "Month", year: "Year",
-        svc: ["Calendar","Notes","Shopping list","Photo album"], sent: "Sent", read: "Read", pending: "Waiting for internet" }
+        svc: ["Calendar","Notes","Shopping list","Photo album"] }
 };
 let lang = "ru", theme = "light", filter = "all", currentId = null, composeFiles = [], mailDrafts = [], editingDraftId = null, me = null, wizStep = 0, wizNick = "", addMode = false;
 const t = k => T[lang][k];
@@ -400,11 +400,11 @@ const initial = s => s[0].toUpperCase();
 const nowTime = () => new Date().toLocaleTimeString(lang === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" });
 const CLIP = '<span class="clip-icon"><div class="paperclip"><div class="paperclip-line outer"></div><div class="paperclip-line middle"></div><div class="paperclip-line inner"></div></div></span>';
 const VERIFIED = '<svg class="vb" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#2b6cdb"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
 const chatColors = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8", "#d4a04a"];
+
 let chats = []; 
 
-// --- ЛОГИКА АВТОРИЗАЦИИ ---
+// --- АВТОРИЗАЦИЯ ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
         me = { nick: user.email.split('@')[0], first: "User", last: "", uid: user.uid }; 
@@ -416,7 +416,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// --- РАБОТА С FIRESTORE ---
+// --- БАЗА ДАННЫХ ---
 async function loadChats() {
     if (!me) return;
     const q = query(collection(db, "users", me.uid, "chats"), orderBy("lastUpdated", "desc"));
@@ -424,13 +424,21 @@ async function loadChats() {
     onSnapshot(q, (snapshot) => {
         chats = [];
         snapshot.forEach((doc) => {
-            const data = doc.data();
-            chats.push({ id: doc.id, ...data });
+            chats.push({ id: doc.id, ...doc.data() });
         });
         
-        if (!chats.find(c => c.email === "support@ylola.ru")) {
-            chats.push({ id: "support", email: "support@ylola.ru", alias: "", verified: true, color: "#2b6cdb", starred: true, unread: 1, messages: [
-                { me: false, text: { ru: "Здравствуйте! Приветствуем, что вы выбрали нашу почту. Пишите, если у вас остались вопросы.", en: "Hello! Welcome, and thank you for choosing our mail. Write to us if you have any questions." }, time: { ru: "09:00", en: "09:00" } } ] });
+        // Восстанавливаем чат поддержки, если он потерялся или сломался
+        let supportChat = chats.find(c => c.id === "support");
+        if (!supportChat) {
+            supportChat = { 
+                id: "support", email: "support@ylola.ru", alias: "", verified: true, color: "#2b6cdb", starred: true, unread: 1, 
+                messages: [{ me: false, text: { ru: "Здравствуйте! Мы на связи.", en: "Hello! We are here." }, time: { ru: "09:00", en: "09:00" } }] 
+            };
+            chats.push(supportChat);
+        } else {
+            // Принудительно возвращаем цвет и галочку, даже если Firebase их стер
+            supportChat.verified = true;
+            supportChat.color = "#2b6cdb";
         }
         
         renderList();
@@ -448,21 +456,22 @@ async function sendMessageToDb(chatId, text) {
     
     if (!chatDoc.exists()) {
         await setDoc(chatRef, {
-            email: chatId + "@ylola.ru",
-            color: chatColors[Math.floor(Math.random() * chatColors.length)],
+            email: chatId === "support" ? "support@ylola.ru" : chatId + "@ylola.ru",
+            color: chatId === "support" ? "#2b6cdb" : chatColors[Math.floor(Math.random() * chatColors.length)],
+            verified: chatId === "support" ? true : false, // Записываем галочку в базу
             lastUpdated: new Date(),
             messages: []
         });
     }
 
     const newMsg = { me: true, text, time: nowTime(), timestamp: new Date() };
-    
     await updateDoc(chatRef, {
         messages: arrayUnion(newMsg),
         lastUpdated: new Date()
     });
 }
 
+// --- ИНТЕРФЕЙС ---
 function setLang(l) {
   lang = l;
   document.documentElement.lang = l;
@@ -473,9 +482,11 @@ function setLang(l) {
   const c = chats.find(x => x.id === currentId);
   if (c) { openChatHeader(c); renderMessages(c); }
 }
+
 function markTheme() {
   document.querySelectorAll("[data-theme-set]").forEach(b => b.classList.toggle("on", b.dataset.themeSet === theme));
 }
+
 function fillDates() {
   const d = $("bDay").value, m = $("bMonth").value, y = $("bYear").value;
   $("bDay").innerHTML = `<option value="">${t("day")}</option>` + Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
@@ -489,6 +500,7 @@ function statusHtml(m) {
   if (m.status === "read") return '<svg class="st read" viewBox="0 0 18 11"><path d="M1 5.5L4.5 9L10 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 5.5L9.5 9L15.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   return '<svg class="st" viewBox="0 0 16 11"><path d="M1 5.5L5 9.5L15 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
+
 function fmtSize(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
 function fileHtml(f) {
   if (f.kind === "photo") return `<img src="${f.url}" alt="${f.name}" class="att-img">`;
@@ -518,15 +530,17 @@ function renderList() {
     </div>`;
   }).join("") : `<div class="empty">${t("empty")}</div>`;
 }
+
 function renderDrafts() {
-  const mailRows = mailDrafts.map(d => `
+  if (mailDrafts.length === 0) return $("list").innerHTML = `<div class="empty">${t("noDrafts")}</div>`;
+  $("list").innerHTML = mailDrafts.map(d => `
     <div class="row" data-draft="${d.id}">
       <div class="avatar" style="background:#b8b0a6">✉</div>
       <div class="row-body"><div class="row-top"><span class="row-name">${d.to || t("noRec")}</span></div>
         <div class="row-last">${d.body || (d.files.length ? t("files") + ": " + d.files.length : "")}</div></div>
     </div>`).join("");
-  $("list").innerHTML = mailRows || `<div class="empty">${t("noDrafts")}</div>`;
 }
+
 function renderServices() {
   const cols = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8"];
   const letters = ["К", "З", "С", "Ф"];
@@ -546,12 +560,14 @@ function renderMessages(c) {
     </div>`).join("");
   $("messages").scrollTop = $("messages").scrollHeight;
 }
+
 function openChatHeader(c) {
   $("chatAvatar").style.background = c.color;
   $("chatAvatar").textContent = initial(nameOf(c));
   $("chatName").innerHTML = nameOf(c) + (c.verified ? VERIFIED : "");
   $("chatSub").textContent = c.email;
 }
+
 function openChat(id) {
   const c = chats.find(x => x.id === id);
   if (!c) return;
@@ -563,18 +579,21 @@ function openChat(id) {
   $("chat").classList.add("open");
   renderList();
 }
+
 function closeChat() {
   $("chat").classList.remove("open");
   currentId = null;
   renderList();
 }
+
 function pushMsg(c, msg) {
   msg.status = navigator.onLine ? "sent" : "pending";
   if (!c.messages) c.messages = [];
   c.messages.push(msg);
   renderMessages(c);
   renderList();
-  sendMessageToDb(c.id, msg.text);
+  
+  if (msg.text) sendMessageToDb(c.id, msg.text);
   
   if (msg.status === "sent") {
     setTimeout(() => {
@@ -586,7 +605,7 @@ function pushMsg(c, msg) {
   }
 }
 
-// --- ЛОГИКА СКРЕПКИ ---
+// --- СКРЕПКА И ФАЙЛЫ ---
 const attachKinds = ["photo", "video", "doc"];
 const attachAccept = { photo: "image/*", video: "video/*", doc: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.zip" };
 const attachInputs = {};
@@ -597,6 +616,7 @@ attachKinds.forEach(k => {
   i.onchange = () => { addFiles(k, [...i.files]); i.value = ""; };
   attachInputs[k] = i;
 });
+
 const composeInput = document.createElement("input");
 composeInput.type = "file"; composeInput.multiple = true; composeInput.style.display = "none";
 composeInput.accept = "image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.zip";
@@ -609,6 +629,7 @@ composeInput.onchange = () => {
   composeInput.value = "";
   renderComposeFiles();
 };
+
 document.querySelectorAll("[data-clip]").forEach(el => el.innerHTML = CLIP);
 
 function addFiles(kind, files) {
@@ -625,10 +646,17 @@ document.querySelectorAll("#attachMenu button").forEach((b, i) => b.onclick = e 
 });
 $("cClip").onclick = () => composeInput.click();
 
+// --- ЧЕРНОВИКИ ---
 function renderComposeFiles() {
   $("cFiles").innerHTML = composeFiles.map(f => `<span class="chip">${{ photo: t("photo"), video: t("video"), doc: t("doc") }[f.kind]}: ${f.name}</span>`).join("");
 }
-function openCompose() { editingDraftId = null; $("compose").classList.add("open"); $("cStatus").textContent = ""; }
+
+function openCompose() { 
+  editingDraftId = null; 
+  $("compose").classList.add("open"); 
+  $("cStatus").textContent = ""; 
+}
+
 function closeCompose() {
   const to = $("cTo").value.trim();
   const body = $("cBody").value.trim();
@@ -644,6 +672,18 @@ function closeCompose() {
   if (filter === "drafts") renderList();
 }
 
+function openDraft(id) {
+  const d = mailDrafts.find(x => x.id === id);
+  if (!d) return;
+  openCompose();
+  editingDraftId = id;
+  $("cTo").value = d.to;
+  $("cBody").value = d.body;
+  composeFiles = d.files.slice();
+  renderComposeFiles();
+}
+
+// --- АВТОРИЗАЦИЯ (ЛОГИКА) ---
 function loginAs(u) {
   me = u;
   $("logo").textContent = "✉ " + u.nick;
@@ -663,6 +703,7 @@ function showStep(n) {
   });
   $("wizBack").style.visibility = n > 0 ? "visible" : "hidden";
 }
+
 function validateStep(n) {
   if (n === 0) {
     if (!$("bDay").value || !$("bMonth").value || !$("bYear").value) { $("e0").textContent = t("errDate"); return false; }
@@ -680,23 +721,29 @@ function validateStep(n) {
   }
   return true;
 }
+
 function syncConsent() { $("consentNext").disabled = !($("chk1").checked && $("chk2").checked); }
 function closeWizard() { $("wizBg").classList.remove("open"); addMode = false; }
 
+// --- ОБРАБОТЧИКИ ---
 $("menuBtn").onclick = () => $("layout").classList.toggle("nav-open");
 $("search").addEventListener("input", renderList);
+
 document.querySelectorAll(".folder").forEach(f => f.onclick = () => {
   filter = filter === f.dataset.f ? "all" : f.dataset.f;
   document.querySelectorAll(".folder").forEach(x => x.classList.toggle("active", x.dataset.f === filter));
   renderList();
 });
+
 $("list").addEventListener("click", e => {
   const row = e.target.closest(".row");
   if (!row) return;
   if (row.dataset.draft) openDraft(Number(row.dataset.draft));
   else if (row.dataset.id) openChat(row.dataset.id);
 });
+
 $("back").onclick = closeChat;
+
 $("form").addEventListener("submit", e => {
   e.preventDefault();
   const text = $("msgInput").value.trim();
@@ -705,6 +752,7 @@ $("form").addEventListener("submit", e => {
   pushMsg(c, { me: true, text, time: nowTime() });
   $("msgInput").value = "";
 });
+
 $("fab").onclick = openCompose;
 $("composeClose").onclick = closeCompose;
 $("composeSend").onclick = () => { 
@@ -726,6 +774,7 @@ document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => {
   document.documentElement.setAttribute("data-theme", theme);
   markTheme();
 });
+
 $("logoutBtn").onclick = () => {
   signOut(auth).then(() => {
     $("setBg").classList.remove("open");
@@ -748,6 +797,7 @@ $("wizX").onclick = closeWizard;
 document.querySelectorAll(".next").forEach(b => b.onclick = () => { if (validateStep(wizStep)) showStep(wizStep + 1); });
 $("wizBack").onclick = () => showStep(Math.max(0, wizStep - 1));
 
+// --- РЕГИСТРАЦИЯ И ВХОД ---
 $("rDone").onclick = async () => {
   const pass = $("rPass").value;
   if (pass.length < 8) { $("e3").textContent = t("errPass"); return; }
@@ -756,10 +806,7 @@ $("rDone").onclick = async () => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, pass);
     await setDoc(doc(db, "users", userCredential.user.uid), {
-      nick: wizNick,
-      first: $("rFirst").value.trim(),
-      last: $("rLast").value.trim(),
-      email: `${wizNick}@ylola.ru`
+      nick: wizNick, first: $("rFirst").value.trim(), last: $("rLast").value.trim(), email: `${wizNick}@ylola.ru`
     });
     $("rPass").value = ""; $("rBot").checked = false; $("e3").textContent = "";
     $("wizBg").classList.remove("open");
@@ -779,9 +826,11 @@ $("loginBtn").onclick = async () => {
     $("lErr").textContent = "Неверный ник или пароль";
   }
 };
+
 $("lPass").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
 $("authLang").onclick = () => setLang(lang === "ru" ? "en" : "ru");
 
+// --- СТАРТ ---
 setLang("ru");
 renderList();
 </script>
