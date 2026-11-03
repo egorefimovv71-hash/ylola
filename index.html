@@ -358,7 +358,7 @@ nav { background:var(--surface); border-right:1px solid var(--border); padding:1
 // --- ИМПОРТЫ FIREBASE ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, getDoc, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, getDoc, updateDoc, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // --- КОНФИГ ---
 const firebaseConfig = {
@@ -406,18 +406,18 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         me = { nick: user.email.split('@')[0], first: "User", last: "", uid: user.uid }; 
         loginAs(me);
-        loadChats(); 
+        loadData(); 
     } else {
         me = null;
         $("auth").classList.remove("hide");
     }
 });
 
-// --- БАЗА ДАННЫХ ---
-async function loadChats() {
+// --- ЗАГРУЗКА ДАННЫХ ---
+function loadData() {
     if (!me) return;
     
-    // Загружаем чаты
+    // 1. Загрузка чатов
     const qChats = query(collection(db, "users", me.uid, "chats"), orderBy("lastUpdated", "desc"));
     onSnapshot(qChats, (snapshot) => {
         chats = [];
@@ -444,8 +444,8 @@ async function loadChats() {
         }
     });
 
-    // Загружаем черновики из базы!
-    const qDrafts = query(collection(db, "users", me.uid, "drafts"), orderBy("id", "desc"));
+    // 2. Загрузка черновиков (из Firebase!)
+    const qDrafts = query(collection(db, "users", me.uid, "drafts"));
     onSnapshot(qDrafts, (snapshot) => {
         mailDrafts = [];
         snapshot.forEach((doc) => {
@@ -464,7 +464,7 @@ async function sendMessageToDb(chatId, text) {
         await setDoc(chatRef, {
             email: chatId === "support" ? "support@ylola.ru" : chatId + "@ylola.ru",
             color: chatId === "support" ? "#2b6cdb" : chatColors[Math.floor(Math.random() * chatColors.length)],
-            verified: chatId === "support" ? true : false, 
+            verified: chatId === "support",
             lastUpdated: new Date(),
             messages: []
         });
@@ -538,12 +538,14 @@ function renderList() {
 }
 
 function renderDrafts() {
-  if (mailDrafts.length === 0) return $("list").innerHTML = `<div class="empty">${t("noDrafts")}</div>`;
+  if (!mailDrafts || mailDrafts.length === 0) {
+      return $("list").innerHTML = `<div class="empty">${t("noDrafts")}</div>`;
+  }
   $("list").innerHTML = mailDrafts.map(d => `
     <div class="row" data-draft="${d.id}">
       <div class="avatar" style="background:#b8b0a6">✉</div>
       <div class="row-body"><div class="row-top"><span class="row-name">${d.to || t("noRec")}</span></div>
-        <div class="row-last">${d.body || (d.files.length ? t("files") + ": " + d.files.length : "")}</div></div>
+        <div class="row-last">${d.body || (d.files && d.files.length ? t("files") + ": " + d.files.length : "")}</div></div>
     </div>`).join("");
 }
 
@@ -611,18 +613,14 @@ function pushMsg(c, msg) {
   }
 }
 
-// --- СКРЕПКА И ФАЙЛЫ ---
-// Теперь при клике сразу открывается проводник
+// --- СКРЕПКА ---
 const fileInput = document.createElement("input");
-fileInput.type = "file"; 
-fileInput.multiple = true; 
-fileInput.style.display = "none";
+fileInput.type = "file"; fileInput.multiple = true; fileInput.style.display = "none";
 document.body.appendChild(fileInput);
 fileInput.onchange = () => { 
     const c = chats.find(x => x.id === currentId);
     if (c && fileInput.files.length) {
-        const files = [...fileInput.files];
-        files.forEach(f => {
+        [...fileInput.files].forEach(f => {
             const kind = f.type.startsWith("image/") ? "photo" : f.type.startsWith("video/") ? "video" : "doc";
             pushMsg(c, { me: true, text: "", time: nowTime(), file: { kind, name: f.name, size: f.size, url: URL.createObjectURL(f) } });
         });
@@ -631,9 +629,7 @@ fileInput.onchange = () => {
 };
 
 const composeInput = document.createElement("input");
-composeInput.type = "file"; 
-composeInput.multiple = true; 
-composeInput.style.display = "none";
+composeInput.type = "file"; composeInput.multiple = true; composeInput.style.display = "none";
 document.body.appendChild(composeInput);
 composeInput.onchange = () => {
   [...composeInput.files].forEach(f => {
@@ -645,8 +641,6 @@ composeInput.onchange = () => {
 };
 
 document.querySelectorAll("[data-clip]").forEach(el => el.innerHTML = CLIP);
-
-// Привязка скрепок напрямую к открытию проводника
 $("clipBtn").onclick = (e) => { e.preventDefault(); fileInput.click(); };
 $("cClip").onclick = (e) => { e.preventDefault(); composeInput.click(); };
 
@@ -658,7 +652,11 @@ function renderComposeFiles() {
 function openCompose() { 
   editingDraftId = null; 
   $("compose").classList.add("open"); 
-  $("cStatus").textContent = ""; 
+  $("cStatus").textContent = "";
+  $("cTo").value = "";
+  $("cBody").value = "";
+  composeFiles = [];
+  renderComposeFiles();
 }
 
 async function closeCompose() {
@@ -669,16 +667,15 @@ async function closeCompose() {
     const draftData = { 
         to: to, 
         body: body, 
-        files: composeFiles.map(f => ({ kind: f.kind, name: f.name, size: f.size })) // url не сохраняем, он временный
+        files: composeFiles.map(f => ({ kind: f.kind, name: f.name, size: f.size }))
     };
     
+    // Сохраняем в Firebase!
     if (editingDraftId) {
-        // Обновляем существующий
         await setDoc(doc(db, "users", me.uid, "drafts", editingDraftId.toString()), draftData);
     } else {
-        // Создаем новый
-        const newDoc = doc(collection(db, "users", me.uid, "drafts"));
-        await setDoc(newDoc, draftData);
+        const newDocRef = doc(collection(db, "users", me.uid, "drafts"));
+        await setDoc(newDocRef, draftData);
     }
   }
   
@@ -688,7 +685,18 @@ async function closeCompose() {
   renderComposeFiles();
 }
 
-// --- АВТОРИЗАЦИЯ (ЛОГИКА) ---
+function openDraft(id) {
+  const d = mailDrafts.find(x => String(x.id) === String(id));
+  if (!d) return;
+  openCompose();
+  editingDraftId = id;
+  $("cTo").value = d.to;
+  $("cBody").value = d.body;
+  composeFiles = d.files ? d.files : [];
+  renderComposeFiles();
+}
+
+// --- АВТОРИЗАЦИЯ ---
 function loginAs(u) {
   me = u;
   $("logo").textContent = "✉ " + u.nick;
@@ -760,8 +768,12 @@ $("form").addEventListener("submit", e => {
 
 $("fab").onclick = openCompose;
 $("composeClose").onclick = closeCompose;
-$("composeSend").onclick = () => { 
-  if (editingDraftId !== null) mailDrafts = mailDrafts.filter(d => d.id !== editingDraftId);
+
+// Отправка письма (удаляем черновик, если отправляем)
+$("composeSend").onclick = async () => { 
+  if (editingDraftId) {
+      try { await deleteDoc(doc(db, "users", me.uid, "drafts", editingDraftId.toString())); } catch(e) {}
+  }
   editingDraftId = null;
   $("compose").classList.remove("open"); 
   $("cTo").value = ""; $("cBody").value = ""; composeFiles = [];
@@ -802,7 +814,6 @@ $("wizX").onclick = closeWizard;
 document.querySelectorAll(".next").forEach(b => b.onclick = () => { if (validateStep(wizStep)) showStep(wizStep + 1); });
 $("wizBack").onclick = () => showStep(Math.max(0, wizStep - 1));
 
-// --- РЕГИСТРАЦИЯ И ВХОД ---
 $("rDone").onclick = async () => {
   const pass = $("rPass").value;
   if (pass.length < 8) { $("e3").textContent = t("errPass"); return; }
@@ -835,7 +846,6 @@ $("loginBtn").onclick = async () => {
 $("lPass").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
 $("authLang").onclick = () => setLang(lang === "ru" ? "en" : "ru");
 
-// --- СТАРТ ---
 setLang("ru");
 renderList();
 </script>
