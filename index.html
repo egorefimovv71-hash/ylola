@@ -528,14 +528,15 @@ function renderList() {
     </div>`;
   }).join("") : `<div class="empty">${t("empty")}</div>`;
 }
-function renderDrafts() {
-  const mailRows = mailDrafts.map(d => `
-    <div class="row" data-draft="${d.id}">
-      <div class="avatar" style="background:#b8b0a6">✉</div>
-      <div class="row-body"><div class="row-top"><span class="row-name">${d.to || t("noRec")}</span></div>
-        <div class="row-last">${d.body || (d.files.length ? t("files") + ": " + d.files.length : "")}</div></div>
+function renderDrafts() { $("list").innerHTML = `<div class="empty">${t("noDrafts")}</div>`; }
+function renderServices() {
+  const cols = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8"];
+  const letters = ["К", "З", "С", "Ф"];
+  $("list").innerHTML = T[lang].svc.map((name, i) => `
+    <div class="row">
+      <div class="avatar" style="background:${cols[i]}">${lang === "ru" ? letters[i] : name[0]}</div>
+      <div class="row-body"><div class="row-name">${name}</div><div class="row-last">${t("coming")}</div></div>
     </div>`).join("");
-  $("list").innerHTML = mailRows || `<div class="empty">${t("noDrafts")}</div>`;
 }
 
 function renderMessages(c) {
@@ -570,79 +571,29 @@ function closeChat() {
   renderList();
 }
 function pushMsg(c, msg) {
-  msg.status = navigator.onLine ? "sent" : "pending";
   if (!c.messages) c.messages = [];
   c.messages.push(msg);
   renderMessages(c);
   renderList();
-  
+  // Отправляем в базу!
   sendMessageToDb(c.id, msg.text);
-  
-  if (msg.status === "sent") {
-    setTimeout(() => {
-      if (msg.status === "sent") { 
-        msg.status = "read"; 
-        if (currentId === c.id) renderMessages(c); 
-      }
-    }, 1500);
-  }
 }
 
 document.querySelectorAll("[data-clip]").forEach(el => el.innerHTML = CLIP);
-  const attachKinds = ["photo", "video", "doc"];
-const attachAccept = { photo: "image/*", video: "video/*", doc: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.zip" };
-const attachInputs = {};
-attachKinds.forEach(k => {
-  const i = document.createElement("input");
-  i.type = "file"; i.multiple = true; i.accept = attachAccept[k]; i.style.display = "none";
-  document.body.appendChild(i);
-  i.onchange = () => { addFiles(k, [...i.files]); i.value = ""; };
-  attachInputs[k] = i;
-});
-const composeInput = document.createElement("input");
-composeInput.type = "file"; composeInput.multiple = true; composeInput.style.display = "none";
-composeInput.accept = "image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.zip";
-document.body.appendChild(composeInput);
-composeInput.onchange = () => {
-  [...composeInput.files].forEach(f => {
-    const kind = f.type.startsWith("image/") ? "photo" : f.type.startsWith("video/") ? "video" : "doc";
-    composeFiles.push({ kind, name: f.name, size: f.size, url: URL.createObjectURL(f) });
-  });
-  composeInput.value = "";
-  renderComposeFiles();
-};
-document.querySelectorAll("[data-clip]").forEach(el => el.innerHTML = CLIP);
-
-function addFiles(kind, files) {
-  const c = chats.find(x => x.id === currentId);
-  if (!c) return;
-  files.forEach(f => pushMsg(c, { me: true, text: "", time: nowTime(), file: { kind, name: f.name, size: f.size, url: URL.createObjectURL(f) } }));
-}
-
-$("clipBtn").onclick = e => { e.stopPropagation(); $("attachMenu").classList.toggle("open"); };
-document.querySelectorAll("#attachMenu button").forEach((b, i) => b.onclick = e => {
-  e.stopPropagation();
-  $("attachMenu").classList.remove("open");
-  attachInputs[attachKinds[i]].click();
-});
-$("cClip").onclick = () => composeInput.click();
 function renderComposeFiles() {
   $("cFiles").innerHTML = composeFiles.map(f => `<span class="chip">${{ photo: t("photo"), video: t("video"), doc: t("doc") }[f.kind]}: ${f.name}</span>`).join("");
 }
 function openCompose() { editingDraftId = null; $("compose").classList.add("open"); $("cStatus").textContent = ""; }
-function closeCompose() {
-  const to = $("cTo").value.trim();
-  const body = $("cBody").value.trim();
-  if (to || body || composeFiles.length) {
-    const draft = { id: editingDraftId !== null ? editingDraftId : Date.now(), to, body, files: composeFiles.slice() };
-    if (editingDraftId !== null) mailDrafts = mailDrafts.map(d => (d.id === editingDraftId ? draft : d));
-    else mailDrafts.push(draft);
-  }
-  editingDraftId = null;
-  $("compose").classList.remove("open");
-  $("cTo").value = ""; $("cBody").value = ""; composeFiles = [];
-  renderComposeFiles();
-  if (filter === "drafts") renderList();
+function closeCompose() { $("compose").classList.remove("open"); }
+
+function loginAs(u) {
+  me = u;
+  $("logo").textContent = "✉ " + u.nick;
+  $("meBtn").textContent = initial(u.first || u.nick);
+  $("pmName").textContent = u.first || u.nick;
+  $("pmMail").textContent = u.nick + "@ylola.ru";
+  $("lNick").value = ""; $("lPass").value = ""; $("lErr").textContent = "";
+  $("auth").classList.add("hide");
 }
 
 function showStep(n) {
