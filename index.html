@@ -2,775 +2,1510 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ferun</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D аквариум на столе</title>
 <style>
-:root { --bg:#faf8f5; --surface:#ffffff; --text:#2b2a28; --muted:#8a847c; --accent:#e07a5f; --accent-soft:#fbe5dc; --border:#efebe6; --radius:16px; color-scheme: light; }
-:root[data-theme="dark"] { --bg:#1d1c1a; --surface:#2a2825; --text:#f1ece6; --muted:#9b948a; --accent:#f09a82; --accent-soft:#3a3430; --border:#3a3632; color-scheme: dark; }
-* { box-sizing: border-box; }
-html[lang="ru"] .l-en, html[lang="en"] .l-ru { display: none; }
-body { margin:0; font-family:"Segoe UI", system-ui, -apple-system, Roboto, sans-serif; background:var(--bg); color:var(--text); height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
-header { display:flex; align-items:center; gap:18px; padding:16px 24px; background:var(--surface); border-bottom:1px solid var(--border); }
-.logo { font-weight:700; font-size:20px; color:var(--accent); white-space:nowrap; }
-.menu-btn, .back, .x-btn { background:none; border:none; color:var(--text); font-size:22px; cursor:pointer; padding:4px 8px; border-radius:8px; }
-.menu-btn:hover, .back:hover, .x-btn:hover { background:var(--bg); }
-.search { flex:1; max-width:480px; padding:10px 16px; border-radius:999px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; }
-.search:focus, .inp:focus, .nick-box:focus-within, .input-row input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
-.avatar { width:42px; height:42px; border-radius:50%; flex-shrink:0; display:grid; place-items:center; color:#fff; font-weight:600; font-size:17px; }
-.me-wrap { position:relative; margin-left:auto; }
-.me-avatar { cursor:pointer; margin-left:auto; background:var(--accent); }
-.profile-menu { position:absolute; right:0; top:calc(100% + 10px); width:260px; background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.12); padding:10px; display:none; z-index:30; }
-.profile-menu.open { display:block; }
-.pm-head { display:flex; gap:12px; align-items:center; padding:10px; border-bottom:1px solid var(--border); margin-bottom:6px; }
-.pm-head small { display:block; color:var(--muted); }
-.pm-head .avatar { margin-left:0; }
-.profile-menu button { display:flex; align-items:center; gap:12px; width:100%; background:none; border:none; font:inherit; font-size:15px; color:var(--text); text-align:left; padding:10px 12px; border-radius:10px; cursor:pointer; }
-.profile-menu button:hover { background:var(--bg); }
-.profile-menu .add-mail { width:auto; display:inline-flex; margin-top:6px; padding:6px 12px; background:var(--accent-soft); color:var(--accent); font-weight:600; font-size:13px; }
-#accounts small { display:block; color:var(--muted); margin:6px 0 0 12px; }
-.pi { width:18px; height:18px; flex-shrink:0; color:var(--muted); }
-
-.layout { flex:1; display:grid; grid-template-columns:0 1fr; min-height:0; transition:grid-template-columns .3s ease; }
-.layout.nav-open { grid-template-columns:220px 1fr; }
-nav { background:var(--surface); border-right:1px solid var(--border); padding:16px 12px; overflow:hidden; white-space:nowrap; transition:padding .3s ease, border-color .3s ease; }
-.layout:not(.nav-open) nav { padding-left:0; padding-right:0; border-right-color:transparent; }
-.folder { padding:11px 14px; border-radius:10px; cursor:pointer; }
-.folder:hover { background:var(--bg); }
-.folder.active { background:var(--accent-soft); font-weight:600; }
-.list { overflow-y:auto; background:var(--surface); }
-.row { display:flex; align-items:center; gap:14px; padding:18px 26px; border-bottom:1px solid var(--border); cursor:pointer; }
-.row:hover { background:var(--bg); }
-.row-body { flex:1; min-width:0; }
-.row-top { display:flex; justify-content:space-between; gap:8px; }
-.row-name { font-weight:600; font-size:16px; display:flex; align-items:center; }
-.row-time { color:var(--muted); font-size:12px; white-space:nowrap; }
-.row-last { color:var(--muted); font-size:14px; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.badge { background:var(--accent); color:#fff; border-radius:999px; min-width:22px; height:22px; padding:0 7px; display:grid; place-items:center; font-size:12px; font-weight:700; }
-.empty { color:var(--muted); text-align:center; margin-top:30%; }
-.vb { width:16px; height:16px; margin-left:6px; flex-shrink:0; }
-.fab { position:fixed; right:24px; bottom:24px; width:56px; height:56px; border-radius:50%; border:none; background:var(--accent); color:#fff; display:grid; place-items:center; cursor:pointer; box-shadow:0 8px 20px rgba(0,0,0,.18); z-index:5; }
-.fab svg { width:24px; height:24px; }
-
-.chat, .compose { position:fixed; inset:0; z-index:10; background:var(--bg); display:flex; flex-direction:column; transform:translateX(100%); transition:transform .3s ease; }
-.chat.open, .compose.open { transform:none; }
-.compose { z-index:12; transform:translateY(100%); }
-.chat-head { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--surface); border-bottom:1px solid var(--border); }
-.chat-head .avatar { width:40px; height:40px; font-size:16px; }
-.chat-head small { color:var(--muted); display:block; }
-.messages { flex:1; overflow-y:auto; padding:28px 32px; display:flex; flex-direction:column; gap:12px; }
-.msg { max-width:65%; padding:12px 16px; border-radius:18px; font-size:15px; line-height:1.45; word-wrap:break-word; }
-.msg.them { background:var(--surface); align-self:flex-start; border-bottom-left-radius:6px; }
-.msg.me { background:var(--accent); color:#fff; align-self:flex-end; border-bottom-right-radius:6px; }
-.msg-time { font-size:11px; opacity:.7; margin-top:4px; text-align:right; }
-.att-img { display:block; max-width:280px; width:100%; border-radius:12px; margin-top:4px; }
-.att-doc { display:flex; flex-direction:column; color:inherit; text-decoration:none; font-weight:600; margin-top:4px; }
-.att-doc small { font-weight:400; opacity:.75; margin-top:2px; }
-.st { margin-left:6px; width:16px; height:11px; display:inline-block; vertical-align:middle; }
-.st.clock { width:12px; height:12px; }
-.st.read { color:#bfe6ff; width:18px; }
-
-.input-row { position:relative; display:flex; align-items:center; gap:12px; padding:16px 24px; background:var(--surface); border-top:1px solid var(--border); }
-.input-row input { flex:1; font:inherit; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:999px; padding:11px 16px; }
-.clip { background:none; border:none; cursor:pointer; padding:4px; color:var(--muted); }
-.clip:hover { color:var(--accent); }
-.clip-wrap { position:relative; display:inline-flex; }
-.clip-icon { position:relative; display:block; width:24px; height:40px; }
-.paperclip { position:absolute; left:50%; top:50%; width:40px; height:130px; transform:translate(-50%,-50%) rotate(45deg) scale(.3,.22); }
-.paperclip-line { position:absolute; border:4px solid #4a5568; border-bottom:none; border-top-left-radius:20px; border-top-right-radius:20px; }
-.outer { width:32px; height:120px; left:0; top:0; border-bottom:4px solid #4a5568; border-bottom-left-radius:20px; border-bottom-right-radius:20px; }
-.middle { width:16px; height:90px; left:8px; top:12px; }
-.inner { width:0; height:60px; left:16px; top:42px; border-right:none; }
-.clip:hover .paperclip-line { border-color:var(--accent); }
-.clip:hover .outer { border-bottom-color:var(--accent); }
-.attach-menu { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(100% + 12px); background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.12); padding:8px; display:none; flex-direction:column; min-width:200px; z-index:20; }
-.attach-menu.open { display:flex; }
-.attach-menu button { background:none; border:none; font:inherit; font-size:15px; color:var(--text); text-align:left; padding:11px 14px; border-radius:10px; cursor:pointer; }
-.attach-menu button:hover { background:var(--bg); }
-.contact-head { display:flex; gap:14px; align-items:center; }
-.contact-head small { color:var(--muted); display:block; margin-top:4px; }
-.send { background:var(--accent); color:#fff; border:none; border-radius:50%; width:46px; height:46px; cursor:pointer; display:grid; place-items:center; flex-shrink:0; }
-.send svg { width:18px; height:18px; }
-
-.compose-fields { background:var(--surface); padding:6px 24px; border-bottom:1px solid var(--border); }
-.field { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
-.field:last-child { border-bottom:none; }
-.lbl { width:70px; color:var(--muted); font-size:14px; }
-.field input { flex:1; border:none; background:none; font:inherit; font-size:15px; color:var(--text); outline:none; }
-.compose-body { flex:1; margin:16px 24px; font:inherit; font-size:16px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; resize:none; outline:none; line-height:1.5; }
-.compose-files { padding:0 24px; display:flex; flex-wrap:wrap; gap:8px; }
-.chip { background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:6px 12px; font-size:13px; }
-.compose-bar { justify-content:flex-start; }
-.cstatus { margin-left:auto; font-size:13px; color:var(--muted); }
-
-.sm-bg { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; padding:16px; z-index:150; }
-.sm-bg.open { display:flex; }
-.sm-card { position:relative; background:var(--surface); border-radius:20px; padding:24px; width:100%; max-width:420px; display:flex; flex-direction:column; gap:12px; }
-.sm-card h2 { margin:0 0 4px; font-size:18px; }
-.sm-card h3 { margin:8px 0 0; font-size:13px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
-.x-btn { position:absolute; top:14px; right:14px; font-size:18px; }
-.link { background:none; border:none; font:inherit; color:#2b6cdb; cursor:pointer; text-decoration:underline; padding:0; }
-.err { color:#d9534f; font-size:14px; min-height:18px; }
-.check { display:flex; gap:10px; align-items:flex-start; font-size:15px; line-height:1.4; cursor:pointer; }
-.check input { width:18px; height:18px; margin-top:2px; accent-color:var(--accent); }
-.policy-text { max-height:55vh; overflow-y:auto; font-size:14px; line-height:1.6; padding-right:6px; }
-.policy-text h4 { margin:14px 0 4px; font-size:15px; }
-.policy-text p { margin:0 0 8px; }
-.msg-status { font-size:13px; min-height:18px; color:var(--muted); }
-.btn-row { display:flex; justify-content:flex-end; gap:10px; margin-top:4px; }
-.btn { padding:10px 18px; border-radius:12px; border:none; font:inherit; cursor:pointer; }
-.btn.primary { background:var(--accent); color:#fff; font-weight:600; }
-.btn.ghost { background:none; color:var(--muted); }
-.btn:disabled { opacity:.45; cursor:not-allowed; }
-.wide { width:100%; padding:14px; font-size:16px; }
-.seg { display:flex; gap:8px; }
-.seg button { flex:1; padding:10px; border-radius:12px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; cursor:pointer; }
-.seg button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
-.inp { width:100%; font:inherit; font-size:16px; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:14px; padding:13px 16px; outline:none; }
-.field-row { display:flex; align-items:center; gap:10px; }
-.nick-box { flex:1; display:flex; align-items:center; border:1px solid var(--border); border-radius:14px; background:var(--bg); padding:0 14px; min-width:0; }
-.nick-box input { flex:1; border:none; background:none; font:inherit; font-size:16px; color:var(--text); padding:13px 0; outline:none; min-width:0; }
-.domain { color:var(--muted); font-weight:600; white-space:nowrap; }
-.wiz { position:relative; height:250px; overflow:hidden; }
-.wstep { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px; opacity:0; transform:translateX(40px); transition:opacity .35s ease, transform .35s ease; pointer-events:none; }
-.wstep.active { opacity:1; transform:none; pointer-events:auto; }
-.wstep.left { opacity:0; transform:translateX(-40px); }
-.wstep h3 { margin:0; font-size:18px; color:var(--text); text-transform:none; letter-spacing:0; font-weight:600; }
-.dates { display:grid; grid-template-columns:1fr 1.6fr 1.2fr; gap:10px; }
-.captcha { display:flex; align-items:center; gap:12px; border:1px solid var(--border); border-radius:14px; padding:12px 14px; background:var(--bg); cursor:pointer; }
-.captcha input { width:22px; height:22px; accent-color:var(--accent); }
-
-.auth { position:fixed; inset:0; z-index:100; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:24px; overflow-y:auto; }
-.auth.hide { display:none; }
-.lang-btn { position:absolute; top:20px; right:24px; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:8px 14px; color:var(--text); font:inherit; font-weight:600; cursor:pointer; }
-.lang-btn svg { width:18px; height:18px; }
-.auth-wrap { display:grid; grid-template-columns:1fr 1fr; gap:56px; max-width:980px; width:100%; align-items:center; }
-.ybig { width:120px; height:120px; border-radius:32px; background:var(--accent); color:#fff; display:grid; place-items:center; font-size:72px; font-weight:800; box-shadow:0 16px 40px rgba(224,122,95,.35); }
-.auth-brand h1 { font-size:40px; margin:22px 0 10px; }
-.auth-brand p { color:var(--muted); line-height:1.6; font-size:16px; margin:0 0 10px; max-width:400px; }
-.auth-brand p strong { color:var(--text); }
-.auth-card { background:var(--surface); border-radius:24px; padding:36px; box-shadow:0 10px 40px rgba(0,0,0,.06); display:flex; flex-direction:column; gap:14px; }
-.auth-card h2 { margin:0 0 4px; font-size:22px; }
-.auth-foot { text-align:center; color:var(--muted); font-size:14px; }
-@media (max-width:760px) { .auth-wrap { grid-template-columns:1fr; gap:28px; } .auth-brand { text-align:center; } .auth-brand p { margin:0 auto 10px; } .ybig { margin:0 auto; width:96px; height:96px; font-size:58px; } .auth-brand h1 { font-size:32px; } }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1512; font-family: system-ui, sans-serif; }
+  canvas { display: block; }
+  #hint {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,240,220,0.7); font-size: 14px; pointer-events: none;
+    background: rgba(0,0,0,0.35); padding: 6px 14px; border-radius: 12px;
+    transition: opacity 1.5s; white-space: nowrap;
+  }
+  #ui { position: fixed; top: 14px; right: 14px; display: flex; gap: 8px; }
+  #ui button {
+    background: rgba(20,30,40,0.7); color: #e8f7ff; border: 1px solid rgba(160,230,255,0.4);
+    border-radius: 10px; padding: 8px 14px; font-size: 14px; cursor: pointer;
+  }
+  #ui button:hover { background: rgba(40,70,90,0.8); }
 </style>
 </head>
 <body>
-<header>
-  <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu">☰</button>
-  <div class="logo" id="logo">✉ Ferun</div>
-  <input class="search" type="search" id="search" data-ph-ru="Поиск чатов" data-ph-en="Search chats">
-  <div class="me-wrap">
-    <div class="avatar me-avatar" id="meBtn">Я</div>
-    <div class="profile-menu" id="profileMenu">
-      <div class="pm-head">
-        <div class="avatar me-avatar">Я</div>
-        <div><strong id="pmName">Я</strong><small id="pmMail">ferun@example.com</small>
-          <button type="button" class="add-mail" id="addMailBtn"><span class="l-ru">+ Добавить почту</span><span class="l-en">+ Add mail</span></button>
-        </div>
-      </div>
-      <div id="accounts"></div>
-      <button type="button" id="setBtn"><svg class="pi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="l-ru">Настройки</span><span class="l-en">Settings</span></button>
-    </div>
-  </div>
-</header>
-
-<div class="layout" id="layout">
-  <nav>
-    <div class="folder" data-f="unread"><span class="l-ru">Непрочитанные</span><span class="l-en">Unread</span></div>
-    <div class="folder" data-f="starred"><span class="l-ru">Важные</span><span class="l-en">Starred</span></div>
-    <div class="folder" data-f="drafts"><span class="l-ru">Черновики</span><span class="l-en">Drafts</span></div>
-    <div class="folder" data-f="services"><span class="l-ru">Сервисы</span><span class="l-en">Services</span></div>
-  </nav>
-  <main class="list" id="list"></main>
+<div id="ui">
+  <button id="waveBtn">Волны: вкл</button>
 </div>
-
-<button class="fab" id="fab" type="button" aria-label="New"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M13.5 6.5l4 4" stroke="currentColor" stroke-width="1.8"/></svg></button>
-
-<section class="compose" id="compose">
-  <div class="chat-head">
-    <button class="back" id="composeClose" type="button" aria-label="Close">✕</button>
-    <strong><span class="l-ru">Новое письмо</span><span class="l-en">New message</span></strong>
-  </div>
-  <div class="compose-fields">
-    <div class="field"><span class="lbl"><span class="l-ru">Кому</span><span class="l-en">To</span></span><input id="cTo" data-ph-ru="Почта получателя" data-ph-en="Recipient email"></div>
-  </div>
-  <textarea id="cBody" class="compose-body" data-ph-ru="Напишите сообщение..." data-ph-en="Write a message..."></textarea>
-  <div class="compose-files" id="cFiles"></div>
-  <div class="input-row compose-bar">
-    <span class="clip-wrap"><button class="clip" type="button" id="cClip" data-clip aria-label="Attach"></button></span>
-    <span class="cstatus" id="cStatus"></span>
-    <button class="send" id="composeSend" type="button" aria-label="Send"><svg viewBox="0 0 24 24"><path d="M3 11.5L21 4l-6 17-3.5-6.5L3 11.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>
-  </div>
-</section>
-
-<section class="chat" id="chat">
-  <div class="chat-head">
-    <button class="back" id="back" type="button" aria-label="Back">←</button>
-    <div class="avatar" id="chatAvatar"></div>
-    <div><strong id="chatName"></strong><small id="chatSub"></small></div>
-  </div>
-  <div class="messages" id="messages"></div>
-    <form class="input-row" id="form" autocomplete="off">
-    <input id="msgInput" data-ph-ru="Сообщение" data-ph-en="Message">
-    
-<div class="auth" id="auth">
-  <button class="lang-btn" id="authLang" type="button"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><span>EN</span></button>
-  <div class="auth-wrap">
-    <div class="auth-brand">
-      <div class="ybig">Y</div>
-      <h1>ylola</h1>
-      <p><strong><span class="l-ru">Надёжная почта.</span><span class="l-en">Secure mail.</span></strong> <span class="l-ru">Мы не читаем ваши переписки, как это делают Google или Mail.</span><span class="l-en">We don't read your conversations, unlike Google or Mail.</span></p>
-      <p><span class="l-ru">Мы надёжная команда. Спасибо, что доверяете нам.</span><span class="l-en">We are a dependable team. Thank you for trusting us.</span></p>
-    </div>
-    <div class="auth-card">
-      <h2><span class="l-ru">Вход</span><span class="l-en">Sign in</span></h2>
-      <div class="field-row"><div class="nick-box"><input id="lNick" autocomplete="username" data-ph-ru="Ваш ник" data-ph-en="Your nickname"></div><span class="domain">@ylola.ru</span></div>
-      <input class="inp" id="lPass" type="password" autocomplete="current-password" data-ph-ru="Пароль" data-ph-en="Password">
-      <div class="err" id="lErr"></div>
-      <button class="btn primary wide" id="loginBtn" type="button"><span class="l-ru">Войти</span><span class="l-en">Sign in</span></button>
-      <div class="auth-foot"><span class="l-ru">Нет почты?</span><span class="l-en">No account?</span> <button class="link" id="regBtn" type="button"><span class="l-ru">Регистрация</span><span class="l-en">Sign up</span></button></div>
-    </div>
-  </div>
-</div>
-
-<div class="sm-bg" id="consentBg"><div class="sm-card">
-  <button class="x-btn" id="consentX" type="button" aria-label="Close">✕</button>
-  <h2><span class="l-ru">Регистрация</span><span class="l-en">Sign up</span></h2>
-  <p style="margin:0;line-height:1.5"><span class="l-ru">Регистрируясь, вы соглашаетесь с условиями <button class="link" id="policyLink" type="button">Политики конфиденциальности</button>.</span><span class="l-en">By signing up you agree to the terms of our <button class="link" id="policyLinkEn" type="button">Privacy Policy</button>.</span></p>
-  <label class="check"><input type="checkbox" id="chk1"> <span class="l-ru">Я прочитал и запомнил</span><span class="l-en">I have read and understood</span></label>
-  <label class="check"><input type="checkbox" id="chk2"> <span class="l-ru">Я принимаю условия Политики конфиденциальности</span><span class="l-en">I accept the Privacy Policy terms</span></label>
-  <div class="btn-row"><button class="btn primary wide" id="consentNext" type="button" disabled><span class="l-ru">Продолжить</span><span class="l-en">Continue</span></button></div>
-</div></div>
-
-<div class="sm-bg" id="policyBg"><div class="sm-card">
-  <button class="x-btn" id="policyX" type="button" aria-label="Close">✕</button>
-  <h2><span class="l-ru">Политика в отношении обработки персональных данных</span><span class="l-en">Personal Data Processing Policy</span></h2>
-  <div class="policy-text l-ru">
-    <p>Настоящая Политика обработки персональных данных (далее — Политика) действует в отношении всей информации, которую сайт ylola.ru (далее — Сайт) может получить о Пользователе во время использования Сайта.</p>
-    <h4>1. Общие положения</h4>
-    <p>1.1. Использование Сайта означает безоговорочное согласие Пользователя с настоящей Политикой и указанными в ней условиями обработки его персональной информации.</p>
-    <p>1.2. В случае несогласия с условиями Политики Пользователь должен воздержаться от использования Сайта.</p>
-    <h4>2. Какие данные мы собираем</h4>
-    <p>2.1. Мы можем собирать следующие данные, которые Пользователь предоставляет добровольно (например, при отправке формы обратной связи или регистрации):</p>
-    <p>— Имя (или псевдоним);<br>— Адрес электронной почты (email);<br>— Данные, которые передаются в автоматическом режиме (IP-адрес, данные cookies, информация о браузере).</p>
-    <h4>3. Цели обработки данных</h4>
-    <p>3.1. Мы используем ваши данные исключительно для:</p>
-    <p>— Ответа на ваши запросы и сообщения;<br>— Предоставления доступа к функционалу Сайта (например, к почтовому сервису);<br>— Улучшения работы Сайта.</p>
-    <h4>4. Передача данных третьим лицам</h4>
-    <p>4.1. Мы не продаем и не передаем ваши персональные данные третьим лицам, за исключением случаев, когда это необходимо для работы Сайта (например, хостинг-провайдер) или требуется по закону.</p>
-    <h4>5. Права пользователя</h4>
-    <p>5.1. Вы имеете право запросить информацию о том, какие ваши данные у нас хранятся, а также потребовать их удаления или исправления. Для этого свяжитесь с нами по адресу: support@ylola.ru.</p>
-    <h4>6. Контактная информация</h4>
-    <p>По всем вопросам, связанным с настоящей Политикой, вы можете обращаться по адресу: support@ylola.ru.</p>
-    <p><em>Последнее обновление: 3 ноября 2026 г.</em></p>
-  </div>
-  <div class="policy-text l-en">
-    <p>This Personal Data Processing Policy (the "Policy") applies to all information that the website ylola.ru (the "Site") may receive about the User while the User uses the Site.</p>
-    <h4>1. General provisions</h4>
-    <p>1.1. Using the Site means the User unconditionally agrees to this Policy and to the terms for processing their personal information set out in it.</p>
-    <p>1.2. If the User does not agree with the terms of the Policy, the User must refrain from using the Site.</p>
-    <h4>2. What data we collect</h4>
-    <p>2.1. We may collect the following data that the User provides voluntarily (for example, when submitting a feedback form or signing up):</p>
-    <p>— Name (or nickname);<br>— Email address;<br>— Data transmitted automatically (IP address, cookie data, browser information).</p>
-    <h4>3. Purposes of processing</h4>
-    <p>3.1. We use your data solely to:</p>
-    <p>— Respond to your requests and messages;<br>— Provide access to the Site's features (for example, the mail service);<br>— Improve the Site.</p>
-    <h4>4. Sharing data with third parties</h4>
-    <p>4.1. We do not sell or transfer your personal data to third parties, except where necessary for the Site to operate (for example, a hosting provider) or where required by law.</p>
-    <h4>5. User rights</h4>
-    <p>5.1. You have the right to request information about what data we store about you, and to ask for it to be deleted or corrected. To do so, contact us at support@ylola.ru.</p>
-    <h4>6. Contact information</h4>
-    <p>For any questions related to this Policy, you can contact us at support@ylola.ru.</p>
-    <p><em>Last updated: November 3, 2026</em></p>
-  </div>
-</div></div>
-
-<div class="sm-bg" id="wizBg"><div class="sm-card">
-  <button class="x-btn" id="wizX" type="button" aria-label="Close">✕</button>
-  <h2><span class="l-ru">Создание почты</span><span class="l-en">Create account</span></h2>
-  <div class="wiz">
-    <div class="wstep active" data-step="0">
-      <h3><span class="l-ru">Когда вы родились?</span><span class="l-en">When were you born?</span></h3>
-      <div class="dates"><select class="inp" id="bDay"></select><select class="inp" id="bMonth"></select><select class="inp" id="bYear"></select></div>
-      <div class="err" id="e0"></div>
-      <button class="btn primary wide next" type="button"><span class="l-ru">Продолжить</span><span class="l-en">Continue</span></button>
-    </div>
-    <div class="wstep" data-step="1">
-      <h3><span class="l-ru">Как вас зовут?</span><span class="l-en">What's your name?</span></h3>
-      <input class="inp" id="rFirst" data-ph-ru="Имя" data-ph-en="First name">
-      <input class="inp" id="rLast" data-ph-ru="Фамилия" data-ph-en="Last name">
-      <div class="err" id="e1"></div>
-      <button class="btn primary wide next" type="button"><span class="l-ru">Далее</span><span class="l-en">Next</span></button>
-    </div>
-    <div class="wstep" data-step="2">
-      <h3><span class="l-ru">Придумайте почту</span><span class="l-en">Choose your email</span></h3>
-      <div class="field-row"><div class="nick-box"><input id="rNick" autocomplete="off" data-ph-ru="Ваш ник" data-ph-en="Your nickname"></div><span class="domain">@ylola.ru</span></div>
-      <div class="err" id="e2"></div>
-      <button class="btn primary wide next" type="button"><span class="l-ru">Далее</span><span class="l-en">Next</span></button>
-    </div>
-    <div class="wstep" data-step="3">
-      <h3><span class="l-ru">Придумайте пароль</span><span class="l-en">Create a password</span></h3>
-      <input class="inp" id="rPass" type="password" autocomplete="new-password" data-ph-ru="Пароль, минимум 8 символов" data-ph-en="Password, at least 8 characters">
-      <label class="captcha"><input type="checkbox" id="rBot"> <span class="l-ru">Я не робот</span><span class="l-en">I'm not a robot</span></label>
-      <div class="err" id="e3"></div>
-      <button class="btn primary wide" id="rDone" type="button"><span class="l-ru">Зарегистрироваться</span><span class="l-en">Sign up</span></button>
-    </div>
-  </div>
-  <div><button class="btn ghost" id="wizBack" type="button" style="visibility:hidden"><span class="l-ru">← Назад</span><span class="l-en">← Back</span></button></div>
-</div></div>
-
-<div class="sm-bg" id="setBg"><div class="sm-card">
-  <button class="x-btn" id="setX" type="button" aria-label="Close">✕</button>
-  <h2><span class="l-ru">Настройки</span><span class="l-en">Settings</span></h2>
-  <h3><span class="l-ru">Язык</span><span class="l-en">Language</span></h3>
-  <div class="seg"><button type="button" data-lang-set="ru">Русский</button><button type="button" data-lang-set="en">English</button></div>
-  <h3><span class="l-ru">Тема</span><span class="l-en">Theme</span></h3>
-  <div class="seg"><button type="button" data-theme-set="light"><span class="l-ru">Светлая</span><span class="l-en">Light</span></button><button type="button" data-theme-set="dark"><span class="l-ru">Тёмная</span><span class="l-en">Dark</span></button></div>
-  <h3><span class="l-ru">Смена пароля</span><span class="l-en">Change password</span></h3>
-  <input class="inp" id="pwCur" type="password" data-ph-ru="Текущий пароль" data-ph-en="Current password">
-  <input class="inp" id="pwNew" type="password" data-ph-ru="Новый пароль" data-ph-en="New password">
-  <input class="inp" id="pwRep" type="password" data-ph-ru="Повторите новый пароль" data-ph-en="Repeat new password">
-  <div class="msg-status" id="pwStatus"></div>
-  <div class="btn-row"><button class="btn primary" id="pwSave" type="button"><span class="l-ru">Сохранить пароль</span><span class="l-en">Save password</span></button></div>
-  <div class="btn-row"><button class="btn ghost" id="logoutBtn" type="button"><span class="l-ru">Выйти из аккаунта</span><span class="l-en">Log out</span></button></div>
-</div></div>
-
-<div class="sm-bg" id="contactBg"><div class="sm-card">
-  <button class="x-btn" id="contactX" type="button" aria-label="Close">✕</button>
-  <div class="contact-head"><div class="avatar" id="ctAvatar"></div><div><h2 id="ctName"></h2><small id="ctMail"></small></div></div>
-  <h3><span class="l-ru">Имя контакта</span><span class="l-en">Contact name</span></h3>
-  <input class="inp" id="ctInput" data-ph-ru="Например, Мама" data-ph-en="For example, Mom">
-  <div class="btn-row">
-    <button class="btn ghost" id="ctDelete" type="button"><span class="l-ru">Удалить имя</span><span class="l-en">Remove name</span></button>
-    <button class="btn primary" id="ctSave" type="button"><span class="l-ru">Сохранить</span><span class="l-en">Save</span></button>
-  </div>
-</div></div>
-
-<script type="module">
-// --- ИМПОРТЫ FIREBASE (без Storage) ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, query, orderBy, doc, setDoc, getDoc, updateDoc, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBbYAL7nd_P1iZFvQq_ZvaVr98JkaAFBGw",
-  authDomain: "ylola-mail.firebaseapp.com",
-  projectId: "ylola-mail",
-  storageBucket: "ylola-mail.firebasestorage.app",
-  messagingSenderId: "55833458602",
-  appId: "1:55833458602:web:24c9ba6bc6cb88cdff5dd3"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-const $ = id => document.getElementById(id);
-const T = {
-  ru: { empty: "Чатов нет", noDrafts: "Черновиков нет", noRec: "Без получателя", draft: "Черновик", you: "Ты: ", coming: "Скоро будет",
-        errContent: "Напишите сообщение", errDate: "Выберите дату рождения", errFirst: "Введите имя", errLast: "Введите фамилию",
-        errNick: "Минимум 5 символов", errTaken: "Ник занят", errPass: "Пароль минимум 8 символов", errBot: "Вы не робот?",
-        errLogin: "Неверный ник или пароль",
-        months: ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"], day: "День", month: "Месяц", year: "Год",
-        svc: ["Календарь","Заметки","Список покупок","Фотоальбом"] },
-  en: { empty: "No chats", noDrafts: "No drafts", noRec: "No recipient", draft: "Draft", you: "You: ", coming: "Coming soon",
-        errContent: "Write a message", errDate: "Choose date", errFirst: "Enter first name", errLast: "Enter last name",
-        errNick: "Min 5 chars", errTaken: "Nick taken", errPass: "Password min 8 chars", errBot: "Are you a robot?",
-        errLogin: "Wrong login",
-        months: ["January","February","March","April","May","June","July","August","September","October","November","December"], day: "Day", month: "Month", year: "Year",
-        svc: ["Calendar","Notes","Shopping list","Photo album"] }
-};
-let lang = "ru", theme = "light", filter = "all", currentId = null, mailDrafts = [], editingDraftId = null, me = null, wizStep = 0, wizNick = "", addMode = false;
-const t = k => T[lang][k];
-const L = v => (v && typeof v === "object" ? v[lang] : v);
-const nameOf = c => c.alias || c.email;
-const initial = s => s[0].toUpperCase();
-const nowTime = () => new Date().toLocaleTimeString(lang === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" });
-const VERIFIED = '<svg class="vb" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#2b6cdb"/><path d="M7 12.5l3 3 7-7" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const chatColors = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8", "#d4a04a"];
-
-let chats = []; 
-
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        me = { nick: user.email.split('@')[0], first: "User", last: "", uid: user.uid }; 
-        loginAs(me);
-        loadData(); 
-    } else {
-        me = null;
-        $("auth").classList.remove("hide");
+<div id="hint">Тяни мышью — вращать · колесо — приблизить · тяни телефон — двигать · R — повернуть · клик по аквариуму — корм и волна</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ================= renderer / scene =================
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+ 
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1b1512);
+scene.fog = new THREE.Fog(0x1b1512, 14, 26);
+ 
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+ 
+const rnd = (a, b) => a + Math.random() * (b - a);
+ 
+// ================= свет =================
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.1);
+sun.position.set(4, 8, 5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -6; sun.shadow.camera.right = 6;
+sun.shadow.camera.top = 6; sun.shadow.camera.bottom = -6;
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+ 
+const tankLight = new THREE.PointLight(0x5fd4ff, 1.0, 6, 2);
+tankLight.position.set(0, 1.5, 0.6);
+scene.add(tankLight);
+ 
+// ================= пол и стол =================
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshStandardMaterial({ color: 0x2a2220, roughness: 0.9 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -2.2;
+floor.receiveShadow = true;
+scene.add(floor);
+ 
+const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.55, metalness: 0.05 });
+const tableTop = new THREE.Mesh(new THREE.BoxGeometry(8, 0.25, 4.2), woodMat);
+tableTop.position.set(0, -0.125, 0);
+tableTop.castShadow = true;
+tableTop.receiveShadow = true;
+scene.add(tableTop);
+ 
+const legGeo = new THREE.BoxGeometry(0.25, 2.2, 0.25);
+for (const [x, z] of [[-3.7, -1.85], [3.7, -1.85], [-3.7, 1.85], [3.7, 1.85]]) {
+  const leg = new THREE.Mesh(legGeo, woodMat);
+  leg.position.set(x, -1.1, z);
+  leg.castShadow = true;
+  scene.add(leg);
+}
+ 
+// ================= аквариум =================
+const TANK_W = 4, TANK_H = 2.2, TANK_D = 2;
+const WATER_W = TANK_W - 0.05, WATER_D = TANK_D - 0.05;
+const WATER_BOTTOM = 0.1;
+const WATER_HEIGHT = 1.85;
+const SURF_Y = WATER_BOTTOM + WATER_HEIGHT;
+ 
+const tank = new THREE.Group();
+scene.add(tank);
+ 
+const stand = new THREE.Mesh(
+  new THREE.BoxGeometry(TANK_W + 0.1, 0.1, TANK_D + 0.1),
+  new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.3 })
+);
+stand.position.set(0, 0.05, 0);
+stand.castShadow = true;
+tank.add(stand);
+ 
+const waterVolumeMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uDeep:    { value: new THREE.Color(0x0a4a66) },
+    uShallow: { value: new THREE.Color(0x46c8e6) },
+    uBot:     { value: WATER_BOTTOM },
+    uTop:     { value: SURF_Y },
+  },
+  vertexShader: `
+    varying float vY;
+    varying vec3 vNormalW;
+    varying vec3 vViewDir;
+    void main() {
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vY = wp.y;
+      vNormalW = normalize(mat3(modelMatrix) * normal);
+      vViewDir = normalize(cameraPosition - wp.xyz);
+      gl_Position = projectionMatrix * viewMatrix * wp;
     }
+  `,
+  fragmentShader: `
+    uniform vec3 uDeep;
+    uniform vec3 uShallow;
+    uniform float uBot;
+    uniform float uTop;
+    varying float vY;
+    varying vec3 vNormalW;
+    varying vec3 vViewDir;
+    void main() {
+      float h = clamp((vY - uBot) / (uTop - uBot), 0.0, 1.0);
+      vec3 col = mix(uDeep, uShallow, h);
+      float fres = pow(1.0 - max(dot(normalize(vNormalW), normalize(vViewDir)), 0.0), 3.0);
+      float alpha = mix(0.38, 0.14, h) + fres * 0.25;
+      col += fres * vec3(0.25, 0.4, 0.45);
+      gl_FragColor = vec4(col, alpha);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  side: THREE.FrontSide,
 });
-
-function loadData() {
-    if (!me) return;
-    const qChats = query(collection(db, "users", me.uid, "chats"), orderBy("lastUpdated", "desc"));
-    onSnapshot(qChats, (snapshot) => {
-        chats = [];
-        snapshot.forEach((doc) => {
-            chats.push({ id: doc.id, ...doc.data() });
-        });
-        let supportChat = chats.find(c => c.id === "support");
-        if (!supportChat) {
-            supportChat = { 
-                id: "support", email: "support@ylola.ru", alias: "", verified: true, color: "#2b6cdb", starred: true, unread: 1, 
-                messages: [{ me: false, text: { ru: "Здравствуйте! Мы на связи.", en: "Hello! We are here." }, time: { ru: "09:00", en: "09:00" } }] 
-            };
-            chats.push(supportChat);
-        } else {
-            supportChat.verified = true;
-            supportChat.color = "#2b6cdb";
-        }
-        renderList();
-        if (currentId) {
-            const c = chats.find(x => x.id === currentId);
-            if (c) renderMessages(c);
-        }
-    });
-
-    const qDrafts = query(collection(db, "users", me.uid, "drafts"));
-    onSnapshot(qDrafts, (snapshot) => {
-        mailDrafts = [];
-        snapshot.forEach((doc) => {
-            mailDrafts.push({ id: doc.id, ...doc.data() });
-        });
-        if (filter === "drafts") renderList();
-    });
-}
-
-async function sendMessageToDb(chatId, text) {
-    if (!me) return;
-    const chatRef = doc(db, "users", me.uid, "chats", chatId);
-    const chatDoc = await getDoc(chatRef);
-    
-    if (!chatDoc.exists()) {
-        await setDoc(chatRef, {
-            email: chatId === "support" ? "support@ylola.ru" : chatId + "@ylola.ru",
-            color: chatId === "support" ? "#2b6cdb" : chatColors[Math.floor(Math.random() * chatColors.length)],
-            verified: chatId === "support",
-            lastUpdated: new Date(),
-            messages: []
-        });
-    }
-
-    const newMsg = { me: true, text, time: nowTime(), timestamp: new Date() };
-    await updateDoc(chatRef, {
-        messages: arrayUnion(newMsg),
-        lastUpdated: new Date()
-    });
-}
-
-function setLang(l) {
-  lang = l;
-  document.documentElement.lang = l;
-  document.querySelectorAll("[data-ph-ru]").forEach(el => el.placeholder = el.getAttribute("data-ph-" + l));
-  document.querySelectorAll("[data-lang-set]").forEach(b => b.classList.toggle("on", b.dataset.langSet === l));
-  $("authLang").querySelector("span").textContent = l === "ru" ? "EN" : "RU";
-  fillDates(); renderList();
-  const c = chats.find(x => x.id === currentId);
-  if (c) { openChatHeader(c); renderMessages(c); }
-}
-
-function markTheme() {
-  document.querySelectorAll("[data-theme-set]").forEach(b => b.classList.toggle("on", b.dataset.themeSet === theme));
-}
-
-function fillDates() {
-  const d = $("bDay").value, m = $("bMonth").value, y = $("bYear").value;
-  $("bDay").innerHTML = `<option value="">${t("day")}</option>` + Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
-  $("bMonth").innerHTML = `<option value="">${t("month")}</option>` + T[lang].months.map((x, i) => `<option value="${i + 1}">${x}</option>`).join("");
-  $("bYear").innerHTML = `<option value="">${t("year")}</option>` + Array.from({ length: 97 }, (_, i) => `<option value="${2026 - i}">${2026 - i}</option>`).join("");
-  $("bDay").value = d; $("bMonth").value = m; $("bYear").value = y;
-}
-
-function statusHtml(m) {
-  if (m.status === "pending") return '<svg class="st clock" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.5V8l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  if (m.status === "read") return '<svg class="st read" viewBox="0 0 18 11"><path d="M1 5.5L4.5 9L10 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 5.5L9.5 9L15.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  return '<svg class="st" viewBox="0 0 16 11"><path d="M1 5.5L5 9.5L15 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-}
-
-function renderList() {
-  if (filter === "services") return renderServices();
-  if (filter === "drafts") return renderDrafts();
-  const q = $("search").value.trim().toLowerCase();
-  const items = chats.filter(c =>
-    (filter === "all" || (filter === "unread" && c.unread > 0) || (filter === "starred" && c.starred)) &&
-    nameOf(c).toLowerCase().includes(q));
-  $("list").innerHTML = items.length ? items.map(c => {
-    const last = c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1] : { text: "...", time: nowTime() };
-    return `
-    <div class="row" data-id="${c.id}">
-      <div class="avatar" style="background:${c.color}">${initial(nameOf(c))}</div>
-      <div class="row-body">
-        <div class="row-top"><span class="row-name">${nameOf(c)}${c.verified ? VERIFIED : ""}</span><span class="row-time">${L(last.time)}</span></div>
-        <div class="row-last">${last.me ? t("you") : ""}${L(last.text)}</div>
-      </div>
-      ${c.unread ? `<span class="badge">${c.unread}</span>` : ""}
-    </div>`;
-  }).join("") : `<div class="empty">${t("empty")}</div>`;
-}
-
-function renderDrafts() {
-  if (!mailDrafts || mailDrafts.length === 0) {
-      return $("list").innerHTML = `<div class="empty">${t("noDrafts")}</div>`;
+const waterVolume = new THREE.Mesh(new THREE.BoxGeometry(WATER_W, WATER_HEIGHT, WATER_D), waterVolumeMat);
+waterVolume.position.set(0, WATER_BOTTOM + WATER_HEIGHT / 2, 0);
+tank.add(waterVolume);
+ 
+const glass = new THREE.Mesh(
+  new THREE.BoxGeometry(TANK_W, TANK_H, TANK_D),
+  new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.08, roughness: 0.05, depthWrite: false })
+);
+glass.position.set(0, TANK_H / 2 + 0.1, 0);
+tank.add(glass);
+const edges = new THREE.LineSegments(
+  new THREE.EdgesGeometry(glass.geometry),
+  new THREE.LineBasicMaterial({ color: 0x9ff5d0, transparent: true, opacity: 0.6 })
+);
+edges.position.copy(glass.position);
+tank.add(edges);
+ 
+// ================= песок =================
+const sandGeo = new THREE.PlaneGeometry(WATER_W, WATER_D, 40, 20);
+sandGeo.rotateX(-Math.PI / 2);
+{
+  const pos = sandGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    pos.setY(i, Math.sin(x * 2.1) * 0.012 + Math.cos(z * 3.3) * 0.012 + Math.random() * 0.006);
   }
-  $("list").innerHTML = mailDrafts.map(d => `
-    <div class="row" data-draft="${d.id}">
-      <div class="avatar" style="background:#b8b0a6">✉</div>
-      <div class="row-body"><div class="row-top"><span class="row-name">${d.to || t("noRec")}</span></div>
-        <div class="row-last">${d.body}</div></div>
-    </div>`).join("");
+  sandGeo.computeVertexNormals();
 }
-
-function renderServices() {
-  const cols = ["#e07a5f", "#6a9bb5", "#7fa97a", "#9b7fb8"];
-  const letters = ["К", "З", "С", "Ф"];
-  $("list").innerHTML = T[lang].svc.map((name, i) => `
-    <div class="row">
-      <div class="avatar" style="background:${cols[i]}">${lang === "ru" ? letters[i] : name[0]}</div>
-      <div class="row-body"><div class="row-name">${name}</div><div class="row-last">${t("coming")}</div></div>
-    </div>`).join("");
-}
-
-function renderMessages(c) {
-  if (!c.messages) c.messages = [];
-  $("messages").innerHTML = c.messages.map(m => `
-    <div class="msg ${m.me ? "me" : "them"}">
-      ${L(m.text)}
-      <div class="msg-time">${L(m.time)}${m.me ? statusHtml(m) : ""}</div>
-    </div>`).join("");
-  $("messages").scrollTop = $("messages").scrollHeight;
-}
-
-function openChatHeader(c) {
-  $("chatAvatar").style.background = c.color;
-  $("chatAvatar").textContent = initial(nameOf(c));
-  $("chatName").innerHTML = nameOf(c) + (c.verified ? VERIFIED : "");
-  $("chatSub").textContent = c.email;
-}
-
-function openChat(id) {
-  const c = chats.find(x => x.id === id);
-  if (!c) return;
-  currentId = id;
-  c.unread = 0;
-  openChatHeader(c);
-  $("msgInput").value = c.draft || "";
-  renderMessages(c);
-  $("chat").classList.add("open");
-  renderList();
-}
-
-function closeChat() {
-  $("chat").classList.remove("open");
-  currentId = null;
-  renderList();
-}
-
-async function pushMsg(c, msg) {
-  msg.status = navigator.onLine ? "sent" : "pending";
-  if (!c.messages) c.messages = [];
-  c.messages.push(msg);
-  renderMessages(c);
-  renderList();
-  
-  await sendMessageToDb(c.id, msg.text);
-  
-  if (msg.status === "sent") {
-    setTimeout(() => {
-      if (msg.status === "sent") { 
-        msg.status = "read"; 
-        if (currentId === c.id) renderMessages(c); 
+const sand = new THREE.Mesh(sandGeo, new THREE.MeshStandardMaterial({ color: 0xd8b57a, roughness: 1 }));
+sand.position.y = WATER_BOTTOM;
+sand.receiveShadow = true;
+tank.add(sand);
+ 
+const causticMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 } },
+  vertexShader: `
+    varying vec3 vW;
+    void main() {
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vW = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `,
+  fragmentShader: `
+    uniform float uTime;
+    varying vec3 vW;
+    void main() {
+      vec2 uv = vW.xz * 0.8;
+      vec2 p = mod(uv * 6.2832, 6.2832) - 250.0;
+      vec2 i = p;
+      float c = 1.0;
+      float inten = 0.005;
+      for (int n = 0; n < 5; n++) {
+        float t = uTime * 0.5 * (1.0 - (3.5 / float(n + 1)));
+        i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+        c += 1.0 / length(vec2(p.x / (sin(i.x + t) / inten), p.y / (cos(i.y + t) / inten)));
       }
-    }, 1500);
+      c /= 5.0;
+      c = 1.17 - pow(c, 1.4);
+      float v = pow(abs(c), 8.0);
+      gl_FragColor = vec4(vec3(v) * vec3(0.4, 0.85, 1.0) * 0.6, 1.0);
+    }
+  `,
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+const caustics = new THREE.Mesh(new THREE.PlaneGeometry(WATER_W, WATER_D), causticMat);
+caustics.rotation.x = -Math.PI / 2;
+caustics.position.y = WATER_BOTTOM + 0.04;
+tank.add(caustics);
+ 
+// ================= камни =================
+const stoneMat = new THREE.MeshStandardMaterial({ color: 0x6b6f73, roughness: 0.9, flatShading: true });
+for (let i = 0; i < 7; i++) {
+  const r = 0.15 + Math.random() * 0.25;
+  const stone = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), stoneMat);
+  stone.scale.set(1, 0.6 + Math.random() * 0.4, 1 + Math.random() * 0.3);
+  stone.position.set(-1.6 + Math.random() * 3.2, WATER_BOTTOM + r * 0.3, -0.7 + Math.random() * 1.4);
+  stone.rotation.set(Math.random(), Math.random() * 3, Math.random());
+  stone.castShadow = true;
+  stone.receiveShadow = true;
+  tank.add(stone);
+}
+ 
+// ================= растения в аквариуме =================
+const plantMats = [
+  new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.6, side: THREE.DoubleSide }),
+  new THREE.MeshStandardMaterial({ color: 0x3aa56b, roughness: 0.6, side: THREE.DoubleSide }),
+  new THREE.MeshStandardMaterial({ color: 0x5a3e8a, roughness: 0.6, side: THREE.DoubleSide }),
+];
+const plants = [];
+function makePlant(x, z, height, matIdx) {
+  const group = new THREE.Group();
+  group.position.set(x, WATER_BOTTOM, z);
+  const leaves = 5 + Math.floor(Math.random() * 4);
+  for (let l = 0; l < leaves; l++) {
+    const angle = (l / leaves) * Math.PI * 2 + Math.random() * 0.4;
+    const h = height * (0.6 + Math.random() * 0.4);
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(Math.cos(angle) * 0.05, h * 0.4, Math.sin(angle) * 0.05),
+      new THREE.Vector3(Math.cos(angle) * 0.14, h * 0.8, Math.sin(angle) * 0.14),
+      new THREE.Vector3(Math.cos(angle) * 0.08, h, Math.sin(angle) * 0.08),
+    ]);
+    const blade = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.035, 5, false), plantMats[matIdx]);
+    blade.castShadow = true;
+    group.add(blade);
   }
+  tank.add(group);
+  plants.push(group);
 }
-
-// --- ЧЕРНОВИКИ ---
-function openCompose() { 
-  editingDraftId = null; 
-  $("compose").classList.add("open"); 
-  $("cStatus").textContent = "";
-  $("cTo").value = ""; $("cBody").value = "";
+makePlant(-1.7, -0.5, 1.1, 0);
+makePlant(-1.4, -0.7, 0.8, 1);
+makePlant(1.6, -0.4, 1.3, 1);
+makePlant(1.8, 0.5, 0.9, 2);
+makePlant(0.3, -0.8, 0.7, 0);
+ 
+// ================= поверхность с волнами =================
+const SURF_SEG_X = 110, SURF_SEG_Z = 55;
+const surfGeo = new THREE.PlaneGeometry(WATER_W, WATER_D, SURF_SEG_X, SURF_SEG_Z);
+surfGeo.rotateX(-Math.PI / 2);
+const surfBaseX = new Float32Array(surfGeo.attributes.position.count);
+const surfBaseZ = new Float32Array(surfGeo.attributes.position.count);
+for (let i = 0; i < surfBaseX.length; i++) {
+  surfBaseX[i] = surfGeo.attributes.position.getX(i);
+  surfBaseZ[i] = surfGeo.attributes.position.getZ(i);
 }
-
-async function closeCompose() {
-  const to = $("cTo").value.trim();
-  const body = $("cBody").value.trim();
-  
-  if (to || body) {
-    const draftData = { to, body };
-    if (editingDraftId) {
-        await setDoc(doc(db, "users", me.uid, "drafts", editingDraftId.toString()), draftData);
-    } else {
-        const newDocRef = doc(collection(db, "users", me.uid, "drafts"));
-        await setDoc(newDocRef, draftData);
+const surface = new THREE.Mesh(surfGeo, new THREE.MeshPhongMaterial({
+  color: 0x9fe6ff, transparent: true, opacity: 0.4,
+  shininess: 160, specular: 0xffffff, side: THREE.DoubleSide, depthWrite: false,
+}));
+surface.position.y = SURF_Y;
+tank.add(surface);
+ 
+const ripples = [];
+const MAX_RIPPLES = 40;
+function addRipple(x, z, amp) {
+  ripples.push({ x, z, t0: time, amp });
+  if (ripples.length > MAX_RIPPLES) ripples.shift();
+}
+ 
+let wavesOn = true;
+let time = 0;
+ 
+function updateSurface() {
+  const pos = surfGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = surfBaseX[i], z = surfBaseZ[i];
+    let h = 0;
+    if (wavesOn) {
+      h += 0.010 * Math.sin(x * 5.0 + time * 1.3) + 0.008 * Math.sin(z * 7.0 - time * 1.7)
+         + 0.006 * Math.sin((x + z) * 9.0 + time * 2.1);
+      for (let r = 0; r < ripples.length; r++) {
+        const rp = ripples[r];
+        const age = time - rp.t0;
+        if (age < 0 || age > 6) continue;
+        const dx = x - rp.x, dz = z - rp.z;
+        const d = Math.sqrt(dx * dx + dz * dz);
+        const diff = d - age * 1.3;
+        h += rp.amp * Math.sin(diff * 16) * Math.exp(-diff * diff * 12) * Math.exp(-age * 0.7);
+      }
+    }
+    pos.setY(i, h);
+  }
+  pos.needsUpdate = true;
+  surfGeo.computeVertexNormals();
+}
+ 
+// ================= текстуры рыб =================
+function drawScales(g, alpha) {
+  g.strokeStyle = `rgba(0,0,0,${alpha})`;
+  g.lineWidth = 1;
+  for (let y = 0; y < 128; y += 6) {
+    for (let x = (y / 6) % 2 === 0 ? 0 : 5; x < 256; x += 10) {
+      g.beginPath();
+      g.arc(x, y, 5, 0.2 * Math.PI, 0.8 * Math.PI);
+      g.stroke();
     }
   }
-  editingDraftId = null;
-  $("compose").classList.remove("open");
-  $("cTo").value = ""; $("cBody").value = "";
 }
-
-function openDraft(id) {
-  const d = mailDrafts.find(x => String(x.id) === String(id));
-  if (!d) return;
-  openCompose();
-  editingDraftId = id;
-  $("cTo").value = d.to;
-  $("cBody").value = d.body;
+ 
+function makeBodyTexture(kind) {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 128;
+  const g = cv.getContext('2d');
+  switch (kind) {
+    case 'angel': {
+      const gr = g.createLinearGradient(0, 0, 0, 128);
+      gr.addColorStop(0, '#c8d3d9'); gr.addColorStop(0.5, '#eef3f5'); gr.addColorStop(1, '#b9c4ca');
+      g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
+      g.fillStyle = 'rgba(20,20,20,0.9)';
+      for (const x of [60, 120, 180]) { g.beginPath(); g.ellipse(x, 64, 9, 60, 0, 0, Math.PI * 2); g.fill(); }
+      break;
+    }
+    case 'neon': {
+      const gr = g.createLinearGradient(0, 0, 0, 128);
+      gr.addColorStop(0, '#1d4fe0'); gr.addColorStop(0.42, '#2a6bff');
+      gr.addColorStop(0.5, '#7ff5ff'); gr.addColorStop(0.58, '#ff2a2a'); gr.addColorStop(1, '#c81616');
+      g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
+      break;
+    }
+    case 'clown': {
+      const gr = g.createLinearGradient(0, 0, 0, 128);
+      gr.addColorStop(0, '#ff8a2a'); gr.addColorStop(1, '#e8600c');
+      g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
+      for (const x of [40, 130, 205]) {
+        g.fillStyle = '#111'; g.fillRect(x - 13, 0, 26, 128);
+        g.fillStyle = '#fbfbfb'; g.fillRect(x - 9, 0, 18, 128);
+      }
+      break;
+    }
+    case 'tang': {
+      const gr = g.createLinearGradient(0, 0, 0, 128);
+      gr.addColorStop(0, '#ffe033'); gr.addColorStop(1, '#f0b400');
+      g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
+      g.fillStyle = '#2350c8';
+      g.beginPath(); g.ellipse(128, 40, 70, 16, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#111';
+      g.beginPath(); g.ellipse(185, 60, 10, 10, 0, 0, Math.PI * 2); g.fill();
+      break;
+    }
+    default:
+      g.fillStyle = '#888888'; g.fillRect(0, 0, 256, 128);
+  }
+  drawScales(g, 0.08);
+  return new THREE.CanvasTexture(cv);
 }
-
-// --- АВТОРИЗАЦИЯ ---
-function loginAs(u) {
-  me = u;
-  $("logo").textContent = "✉ " + u.nick;
-  $("meBtn").textContent = initial(u.first || u.nick);
-  $("pmName").textContent = u.first || u.nick;
-  $("pmMail").textContent = u.nick + "@ylola.ru";
-  $("lNick").value = ""; $("lPass").value = ""; $("lErr").textContent = "";
-  $("auth").classList.add("hide");
+ 
+function makeBumpTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 128;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#808080'; g.fillRect(0, 0, 256, 128);
+  drawScales(g, 0.6);
+  return new THREE.CanvasTexture(cv);
 }
-
-function showStep(n) {
-  wizStep = n;
-  document.querySelectorAll(".wstep").forEach(s => {
-    const i = Number(s.dataset.step);
-    s.classList.toggle("active", i === n);
-    s.classList.toggle("left", i < n);
+ 
+function makeFinTexture(colorHex) {
+  const cv = document.createElement('canvas');
+  cv.width = 128; cv.height = 128;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#' + colorHex.toString(16).padStart(6, '0');
+  g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = 'rgba(0,0,0,0.2)';
+  g.lineWidth = 1.5;
+  for (let i = 0; i <= 12; i++) {
+    const a = (i / 12 - 0.5) * 1.6;
+    g.beginPath();
+    g.moveTo(0, 64);
+    g.lineTo(128 * Math.cos(a), 64 + 128 * Math.sin(a));
+    g.stroke();
+  }
+  return new THREE.CanvasTexture(cv);
+}
+ 
+// ================= объёмные плавники =================
+// Плавник — тонкое тело толщиной thick: две поверхности (лицевая и обратная)
+// и боковая кромка. Колышется волной вдоль длины.
+function buildFin(fn, thick, amp, freq) {
+  const segU = 8, segV = 4;
+  const cols = segU + 1, rows = segV + 1;
+  const N = cols * rows;
+  const idx = (i, j) => j * cols + i;
+ 
+  const base = new Float32Array(N * 2);
+  const uArr = new Float32Array(N);
+  const uvs = new Float32Array(2 * N * 2);
+  for (let j = 0; j <= segV; j++) {
+    for (let i = 0; i <= segU; i++) {
+      const k = idx(i, j);
+      const u = i / segU, v = j / segV;
+      const [x, y] = fn(u, v);
+      base[2 * k] = x; base[2 * k + 1] = y;
+      uArr[k] = u;
+      uvs[2 * k] = u; uvs[2 * k + 1] = v;
+      uvs[2 * (k + N)] = u; uvs[2 * (k + N) + 1] = v;
+    }
+  }
+ 
+  const index = [];
+  for (let j = 0; j < segV; j++) {
+    for (let i = 0; i < segU; i++) {
+      const a = idx(i, j), b = idx(i + 1, j), c = idx(i, j + 1), d = idx(i + 1, j + 1);
+      index.push(a, b, d, a, d, c);                         // лицевая
+      index.push(a + N, d + N, b + N, a + N, c + N, d + N); // обратная
+    }
+  }
+  // боковая кромка по периметру
+  const perim = [];
+  for (let i = 0; i <= segU; i++) perim.push(idx(i, 0));
+  for (let j = 1; j <= segV; j++) perim.push(idx(segU, j));
+  for (let i = segU - 1; i >= 0; i--) perim.push(idx(i, segV));
+  for (let j = segV - 1; j >= 0; j--) perim.push(idx(0, j));
+  for (let k = 0; k < perim.length - 1; k++) {
+    const p = perim[k], q = perim[k + 1];
+    index.push(p, q, q + N, p, q + N, p + N);
+  }
+ 
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(2 * N * 3), 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(index);
+ 
+  const fin = { geo, base, uArr, N, thick, amp, freq, phase: Math.random() * 6.28 };
+  updateFin(fin);
+  return fin;
+}
+ 
+function updateFin(f) {
+  const p = f.geo.attributes.position;
+  const N = f.N;
+  for (let k = 0; k < N; k++) {
+    const u = f.uArr[k];
+    const x = f.base[2 * k], y = f.base[2 * k + 1];
+    const w = Math.sin(time * f.freq + u * 4 + f.phase) * f.amp * u;
+    p.setXYZ(k, x, y, w + f.thick / 2);
+    p.setXYZ(k + N, x, y, w - f.thick / 2);
+  }
+  p.needsUpdate = true;
+  f.geo.computeVertexNormals();
+}
+ 
+const SHAPES = {
+  dorsal: (L, H) => (u, v) => [(u - 0.5) * L * (1 - 0.6 * v), v * H],
+  anal:   (L, H) => (u, v) => [(u - 0.5) * L * (1 - 0.6 * v), -v * H],
+  fork:   (L, H) => (u, v) => [-u * L + 0.3 * L * u * (1 - Math.abs(2 * v - 1)), (v - 0.5) * H * u],
+  fan:    (L, H) => (u, v) => [-u * L, (v - 0.5) * H * u * 1.3],
+  pect:   (L, H) => (u, v) => [-u * L, (v - 0.5) * H * (1 - 0.5 * u)],
+};
+ 
+// тело с сужением к хвосту
+function buildBody() {
+  const geo = new THREE.SphereGeometry(0.3, 32, 24);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const t = x / 0.3;
+    const k = t < 0 ? 1 - 0.65 * Math.pow(-t, 1.6) : 1 - 0.06 * t * t;
+    p.setXYZ(i, x, y * k, z * k);
+  }
+  geo.computeVertexNormals();
+  return { geo, base: Float32Array.from(p.array) };
+}
+function updateBody(f) {
+  const p = f.body.geo.attributes.position;
+  const b = f.body.base;
+  for (let i = 0; i < p.count; i++) {
+    const x = b[i * 3], y = b[i * 3 + 1], z = b[i * 3 + 2];
+    const tailFactor = Math.min(1, Math.max(0, -x / 0.3));
+    const wave = Math.sin(time * f.beatFreq - x * 7 + f.phase) * 0.05 * tailFactor * tailFactor;
+    p.setXYZ(i, x, y, z + wave);
+  }
+  p.needsUpdate = true;
+  f.body.geo.computeVertexNormals();
+}
+ 
+// ================= виды рыб =================
+const SPECIES = [
+  { name: 'angel',  tex: 'angel', fin: 0xf4f1e8, sx: 1.0,  sy: 1.5,  sz: 0.32, dorsal: [0.6, 0.5],   anal: [0.45, 0.32], tail: ['fork', 0.3, 0.3],   pect: [0.22, 0.16], school: 0.4, speed: [0.22, 0.3],  size: [0.85, 1.0], count: 1, thick: 0.02 },
+  { name: 'neon',   tex: 'neon',  fin: 0x9fe6ff, sx: 1.45, sy: 0.6,  sz: 0.4,  dorsal: [0.25, 0.09], anal: [0.3, 0.07],  tail: ['fork', 0.2, 0.18],  pect: [0.1, 0.07],  school: 1.0, speed: [0.35, 0.45], size: [0.8, 0.9],  count: 3, thick: 0.012 },
+  { name: 'clown',  tex: 'clown', fin: 0xff9a4d, sx: 1.2,  sy: 0.95, sz: 0.5,  dorsal: [0.5, 0.2],   anal: [0.3, 0.15],  tail: ['fan', 0.28, 0.3],   pect: [0.2, 0.16],  school: 0.2, speed: [0.25, 0.32], size: [0.9, 1.0], count: 1, thick: 0.016 },
+  { name: 'tang',   tex: 'tang',  fin: 0xffe066, sx: 1.25, sy: 1.15, sz: 0.38, dorsal: [0.7, 0.18],  anal: [0.5, 0.14],  tail: ['fork', 0.28, 0.36], pect: [0.2, 0.18],  school: 0.5, speed: [0.3, 0.38],  size: [0.8, 0.9], count: 1, thick: 0.016 },
+];
+ 
+const sharedBump = makeBumpTexture();
+const fishes = [];
+const BOUNDS = { x: 1.75, yMin: 0.5, yMax: 1.8, z: 0.75 };
+ 
+function makeFish(sp) {
+  const group = new THREE.Group();
+  group.rotation.order = 'YXZ';
+  group.scale.setScalar(rnd(sp.size[0], sp.size[1]));
+ 
+  const body = buildBody();
+  const bodyMat = new THREE.MeshStandardMaterial({
+    map: makeBodyTexture(sp.tex), bumpMap: sharedBump, bumpScale: 0.02,
+    roughness: 0.3, metalness: 0.05,
   });
-  $("wizBack").style.visibility = n > 0 ? "visible" : "hidden";
-}
-
-function validateStep(n) {
-  if (n === 0) {
-    if (!$("bDay").value || !$("bMonth").value || !$("bYear").value) { $("e0").textContent = t("errDate"); return false; }
-    $("e0").textContent = ""; return true;
-  }
-  if (n === 1) {
-    if (!$("rFirst").value.trim()) { $("e1").textContent = t("errFirst"); return false; }
-    if (!$("rLast").value.trim()) { $("e1").textContent = t("errLast"); return false; }
-    $("e1").textContent = ""; return true;
-  }
-  if (n === 2) {
-    const nick = $("rNick").value.trim().toLowerCase();
-    if (!/^[a-z0-9._-]{5,}$/.test(nick)) { $("e2").textContent = t("errNick"); return false; }
-    wizNick = nick; $("e2").textContent = ""; return true;
-  }
-  return true;
-}
-
-function syncConsent() { $("consentNext").disabled = !($("chk1").checked && $("chk2").checked); }
-function closeWizard() { $("wizBg").classList.remove("open"); addMode = false; }
-
-// --- ОБРАБОТЧИКИ ---
-$("menuBtn").onclick = () => $("layout").classList.toggle("nav-open");
-$("search").addEventListener("input", renderList);
-
-document.querySelectorAll(".folder").forEach(f => f.onclick = () => {
-  filter = filter === f.dataset.f ? "all" : f.dataset.f;
-  document.querySelectorAll(".folder").forEach(x => x.classList.toggle("active", x.dataset.f === filter));
-  renderList();
-});
-
-$("list").addEventListener("click", e => {
-  const row = e.target.closest(".row");
-  if (!row) return;
-  if (row.dataset.draft) openDraft(Number(row.dataset.draft));
-  else if (row.dataset.id) openChat(row.dataset.id);
-});
-
-$("back").onclick = closeChat;
-
-$("form").addEventListener("submit", async e => {
-  e.preventDefault();
-  const text = $("msgInput").value.trim();
-  const c = chats.find(x => x.id === currentId);
-  if (!text || !c) return;
-  await pushMsg(c, { me: true, text, time: nowTime() });
-  $("msgInput").value = "";
-});
-
-$("fab").onclick = openCompose;
-$("composeClose").onclick = closeCompose;
-
-$("composeSend").onclick = async () => { 
-  if (editingDraftId) {
-      try { await deleteDoc(doc(db, "users", me.uid, "drafts", editingDraftId.toString())); } catch(e) {}
-  }
-  editingDraftId = null;
-  $("compose").classList.remove("open"); 
-  $("cTo").value = ""; $("cBody").value = "";
-};
-
-$("meBtn").onclick = e => { e.stopPropagation(); $("profileMenu").classList.toggle("open"); };
-$("profileMenu").onclick = e => e.stopPropagation();
-document.addEventListener("click", () => $("profileMenu").classList.remove("open"));
-$("setBtn").onclick = () => { $("profileMenu").classList.remove("open"); markTheme(); $("setBg").classList.add("open"); };
-$("setX").onclick = () => $("setBg").classList.remove("open");
-document.querySelectorAll("[data-lang-set]").forEach(b => b.onclick = () => setLang(b.dataset.langSet));
-document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => {
-  theme = b.dataset.themeSet;
-  document.documentElement.setAttribute("data-theme", theme);
-  markTheme();
-});
-
-$("logoutBtn").onclick = () => {
-  signOut(auth).then(() => {
-    $("setBg").classList.remove("open");
-    $("logo").textContent = "✉ Ferun";
-    $("meBtn").textContent = "Я";
-    $("auth").classList.remove("hide");
+  const bodyMesh = new THREE.Mesh(body.geo, bodyMat);
+  bodyMesh.scale.set(sp.sx, sp.sy, sp.sz);
+  bodyMesh.castShadow = true;
+  group.add(bodyMesh);
+ 
+  const finMat = new THREE.MeshStandardMaterial({
+    map: makeFinTexture(sp.fin), roughness: 0.35, metalness: 0.05,
+    side: THREE.DoubleSide, transparent: true, opacity: 0.8, depthWrite: false,
   });
-};
-
-function openConsent() { $("chk1").checked = false; $("chk2").checked = false; syncConsent(); $("consentBg").classList.add("open"); }
-$("addMailBtn").onclick = () => { $("profileMenu").classList.remove("open"); addMode = true; openConsent(); };
-$("regBtn").onclick = () => { addMode = false; openConsent(); };
-$("chk1").onchange = syncConsent; $("chk2").onchange = syncConsent;
-$("consentX").onclick = () => { $("consentBg").classList.remove("open"); addMode = false; };
-$("policyLink").onclick = () => $("policyBg").classList.add("open");
-$("policyLinkEn").onclick = () => $("policyBg").classList.add("open");
-$("policyX").onclick = () => $("policyBg").classList.remove("open");
-$("consentNext").onclick = () => { $("consentBg").classList.remove("open"); showStep(0); $("wizBg").classList.add("open"); };
-$("wizX").onclick = closeWizard;
-document.querySelectorAll(".next").forEach(b => b.onclick = () => { if (validateStep(wizStep)) showStep(wizStep + 1); });
-$("wizBack").onclick = () => showStep(Math.max(0, wizStep - 1));
-
-$("rDone").onclick = async () => {
-  const pass = $("rPass").value;
-  if (pass.length < 8) { $("e3").textContent = t("errPass"); return; }
-  if (!$("rBot").checked) { $("e3").textContent = t("errBot"); return; }
-  const firebaseEmail = `${wizNick}@gmail.com`; 
-  try {
-    const userCredential = await createUserWithEmailAndPassword(auth, firebaseEmail, pass);
-    await setDoc(doc(db, "users", userCredential.user.uid), {
-      nick: wizNick, first: $("rFirst").value.trim(), last: $("rLast").value.trim(), email: `${wizNick}@ylola.ru`
-    });
-    $("rPass").value = ""; $("rBot").checked = false; $("e3").textContent = "";
-    $("wizBg").classList.remove("open");
-  } catch (error) {
-    $("e3").textContent = "Ошибка: " + error.message;
+  const fins = [];
+  const addFin = (parent, fn, amp, freq, x, y) => {
+    const f = buildFin(fn, sp.thick, amp, freq);
+    const m = new THREE.Mesh(f.geo, finMat);
+    m.position.set(x, y, 0);
+    m.castShadow = true;
+    parent.add(m);
+    fins.push(f);
+    return m;
+  };
+ 
+  if (sp.dorsal) addFin(group, SHAPES.dorsal(sp.dorsal[0], sp.dorsal[1]), 0.06, 4.0, -0.05 * sp.sx, 0.25 * sp.sy);
+  if (sp.anal)   addFin(group, SHAPES.anal(sp.anal[0], sp.anal[1]),       0.04, 4.8, -0.05 * sp.sx, -0.25 * sp.sy);
+ 
+  const tailPivot = new THREE.Group();
+  tailPivot.position.set(-0.27 * sp.sx, 0, 0);
+  group.add(tailPivot);
+  const [tailShape, tailL, tailH] = sp.tail;
+  addFin(tailPivot, SHAPES[tailShape](tailL, tailH), 0.08, 6.0, 0, 0);
+ 
+  const pectorals = [];
+  for (const side of [-1, 1]) {
+    const pivot = new THREE.Group();
+    pivot.position.set(0.1 * sp.sx, -0.05 * sp.sy, side * 0.26 * sp.sz);
+    group.add(pivot);
+    addFin(pivot, SHAPES.pect(sp.pect[0], sp.pect[1]), 0.02, 3.0, 0, 0);
+    pectorals.push(pivot);
   }
-};
-
-$("loginBtn").onclick = async () => {
-  const nick = $("lNick").value.trim().toLowerCase();
-  const pass = $("lPass").value;
-  const firebaseEmail = `${nick}@gmail.com`; 
-  try {
-    await signInWithEmailAndPassword(auth, firebaseEmail, pass);
-    $("lErr").textContent = "";
-  } catch (error) {
-    $("lErr").textContent = "Неверный ник или пароль";
+ 
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Group();
+    eye.position.set(0.12 * sp.sx, 0.05 * sp.sy, side * 0.28 * sp.sz);
+    group.add(eye);
+    eye.add(new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 12), new THREE.MeshBasicMaterial({ color: 0xf5f5f5 })));
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.042, 16, 12),
+      new THREE.MeshStandardMaterial({ color: sp.name === 'neon' ? 0x7fe0ff : 0xd9a441, roughness: 0.15 }));
+    iris.position.set(0.028, 0, side * 0.02);
+    eye.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), new THREE.MeshBasicMaterial({ color: 0x050505 }));
+    pupil.position.set(0.04, 0, side * 0.03);
+    eye.add(pupil);
+    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    glint.position.set(0.05, 0.015, side * 0.035);
+    eye.add(glint);
   }
-};
-
-$("lPass").addEventListener("keydown", e => { if (e.key === "Enter") $("loginBtn").click(); });
-$("authLang").onclick = () => setLang(lang === "ru" ? "en" : "ru");
-
-setLang("ru");
-renderList();
+ 
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshStandardMaterial({ color: 0x8a2a2a, roughness: 0.6 }));
+  mouth.position.set(0.29 * sp.sx, -0.03 * sp.sy, 0);
+  group.add(mouth);
+ 
+  tank.add(group);
+ 
+  return {
+    group, body, bodyMesh, tailPivot, pectorals, mouth, fins,
+    school: sp.school,
+    baseSpeed: rnd(sp.speed[0], sp.speed[1]),
+    beatFreq: 0,
+    pos: new THREE.Vector3(rnd(-BOUNDS.x, BOUNDS.x), rnd(BOUNDS.yMin, BOUNDS.yMax), rnd(-BOUNDS.z, BOUNDS.z)),
+    vel: new THREE.Vector3(rnd(-0.2, 0.2), 0, rnd(-0.15, 0.15)),
+    target: new THREE.Vector3(),
+    hasTarget: false,
+    burstT: 0,
+    eatT: 0,
+    wakeTimer: Math.random() * 0.5,
+    phase: Math.random() * Math.PI * 2,
+  };
+}
+ 
+for (const sp of SPECIES) {
+  for (let i = 0; i < sp.count; i++) fishes.push(makeFish(sp));
+}
+ 
+function pickWanderTarget(f) {
+  f.target.set(rnd(-BOUNDS.x, BOUNDS.x), rnd(BOUNDS.yMin, BOUNDS.yMax), rnd(-BOUNDS.z, BOUNDS.z));
+  f.hasTarget = true;
+}
+ 
+// ================= корм =================
+const foodGeo = new THREE.SphereGeometry(0.04, 8, 6);
+const foodMat = new THREE.MeshStandardMaterial({ color: 0xd2823c, roughness: 0.7 });
+const foods = [];
+ 
+// ================= пузырьки =================
+const bubbleGeo = new THREE.SphereGeometry(1, 10, 8);
+const bubbleMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1, depthWrite: false });
+const bubbles = [];
+let bubbleTimer = 0;
+const BUBBLER = new THREE.Vector3(-1.5, WATER_BOTTOM + 0.05, 0.4);
+ 
+// ================= предметы на столе =================
+const tableItems = new THREE.Group();
+scene.add(tableItems);
+ 
+function makeBoxWithFaces(w, h, d, faceMats) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), faceMats);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+ 
+// --- пачка сигарет ---
+function makeCigarettePack() {
+  const g = new THREE.Group();
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 128;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#1d3b6e'; c.fillRect(0, 0, 256, 128);
+  const shine = c.createLinearGradient(0, 0, 256, 128);
+  shine.addColorStop(0, 'rgba(255,255,255,0.25)'); shine.addColorStop(0.5, 'rgba(255,255,255,0)');
+  c.fillStyle = shine; c.fillRect(0, 0, 256, 128);
+  c.fillStyle = '#d8b04a'; c.fillRect(0, 56, 256, 16);
+  const topTex = new THREE.CanvasTexture(cv);
+ 
+  const sideMat = new THREE.MeshStandardMaterial({ color: 0x1d3b6e, roughness: 0.35, metalness: 0.1 });
+  const topMat = new THREE.MeshPhysicalMaterial({ map: topTex, roughness: 0.25, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+  const pack = makeBoxWithFaces(0.85, 0.2, 0.55, [sideMat, sideMat, topMat, sideMat, sideMat, sideMat]);
+  pack.position.y = 0.1;
+  g.add(pack);
+ 
+  const paper = new THREE.MeshStandardMaterial({ color: 0xf4efe2, roughness: 0.8 });
+  const filter = new THREE.MeshStandardMaterial({ color: 0xe0a060, roughness: 0.9 });
+  for (let i = 0; i < 5; i++) {
+    const cig = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.42, 12), paper);
+    body.rotation.z = Math.PI / 2;
+    body.castShadow = true;
+    cig.add(body);
+    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.031, 0.031, 0.1, 12), filter);
+    tip.rotation.z = Math.PI / 2;
+    tip.position.x = 0.16;
+    cig.add(tip);
+    cig.position.set(0.05, 0.23, -0.18 + i * 0.09);
+    cig.rotation.z = (i % 2 ? 0.02 : -0.02);
+    g.add(cig);
+  }
+ 
+  const cellophane = new THREE.Mesh(
+    new THREE.BoxGeometry(0.87, 0.21, 0.57),
+    new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, roughness: 0.05, depthWrite: false })
+  );
+  cellophane.position.y = 0.1;
+  g.add(cellophane);
+ 
+  g.position.set(-2.9, 0, 0.95);
+  g.rotation.y = 0.2;
+  return g;
+}
+ 
+// --- кошелёк с картами ---
+function makeCardTexture(color, label) {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 160;
+  const c = cv.getContext('2d');
+  c.fillStyle = color; c.fillRect(0, 0, 256, 160);
+  const grad = c.createLinearGradient(0, 0, 256, 160);
+  grad.addColorStop(0, 'rgba(255,255,255,0.3)'); grad.addColorStop(1, 'rgba(0,0,0,0.2)');
+  c.fillStyle = grad; c.fillRect(0, 0, 256, 160);
+  c.fillStyle = '#e8c15a'; c.fillRect(22, 60, 42, 32);
+  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 2;
+  c.strokeRect(22, 60, 42, 32);
+  c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = 'bold 18px sans-serif';
+  c.fillText(label, 22, 135);
+  return new THREE.CanvasTexture(cv);
+}
+ 
+// кожа: цвет и зернистость
+function makeLeatherTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 256;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#7a4a26';
+  c.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 4000; i++) {
+    const a = Math.random() * 0.25;
+    c.fillStyle = Math.random() < 0.5 ? `rgba(0,0,0,${a})` : `rgba(255,220,170,${a * 0.5})`;
+    c.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+  const t = new THREE.CanvasTexture(cv);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2, 2);
+  return t;
+}
+ 
+// плоская панель из кожи со скруглёнными краями
+function makePanel(w, h, r, thick, yBottom, mat) {
+  const bev = 0.003;
+  const geo = new THREE.ExtrudeGeometry(roundedRectShape(w, h, r), {
+    depth: thick - 2 * bev,
+    bevelEnabled: true,
+    bevelThickness: bev,
+    bevelSize: bev,
+    bevelSegments: 3,
+    curveSegments: 12,
+  });
+  geo.center();
+  geo.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(geo, [mat, mat]);
+  m.position.y = yBottom + thick / 2;
+  m.castShadow = true;
+  m.receiveShadow = true;
+  return m;
+}
+ 
+// строчка по периметру: маленькие нитки (InstancedMesh)
+function addStitches(parent, w, h, yTop) {
+  const geo = new THREE.BoxGeometry(0.018, 0.002, 0.004);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xd9b86a, roughness: 0.6 });
+  const inset = 0.035;
+  const hw = w / 2 - inset, hh = h / 2 - inset;
+  const step = 0.03;
+  const pts = [];
+  for (let x = -hw; x <= hw; x += step) { pts.push([x, hh, 0]); pts.push([x, -hh, 0]); }
+  for (let z = -hh; z <= hh; z += step) { pts.push([hw, z, Math.PI / 2]); pts.push([-hw, z, Math.PI / 2]); }
+  const inst = new THREE.InstancedMesh(geo, mat, pts.length);
+  const dummy = new THREE.Object3D();
+  pts.forEach(([x, z, a], i) => {
+    dummy.position.set(x, yTop + 0.001, z);
+    dummy.rotation.set(0, a, 0);
+    dummy.updateMatrix();
+    inst.setMatrixAt(i, dummy.matrix);
+  });
+  inst.instanceMatrix.needsUpdate = true;
+  parent.add(inst);
+}
+ 
+// лицевые стороны карт
+function makeCardFace(kind) {
+  const cv = document.createElement('canvas');
+  cv.width = 512; cv.height = 320;
+  const c = cv.getContext('2d');
+  c.font = 'bold 34px -apple-system, Helvetica, Arial, sans-serif';
+ 
+  if (kind === 'blue') {
+    const gr = c.createLinearGradient(0, 0, 512, 320);
+    gr.addColorStop(0, '#3b7de0'); gr.addColorStop(1, '#1b3f9a');
+    c.fillStyle = gr; c.fillRect(0, 0, 512, 320);
+    c.fillStyle = '#fff'; c.fillText('BANK', 34, 62);
+    const chip = c.createLinearGradient(0, 130, 0, 190);
+    chip.addColorStop(0, '#f5d77a'); chip.addColorStop(1, '#b8892a');
+    c.fillStyle = chip; rrPath(c, 40, 130, 76, 60, 8); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.font = '26px monospace';
+    c.fillText('**** **** **** 0000', 40, 250);
+  } else if (kind === 'black') {
+    c.fillStyle = '#161616'; c.fillRect(0, 0, 512, 320);
+    const st = c.createLinearGradient(0, 70, 0, 130);
+    st.addColorStop(0, '#d8d8d8'); st.addColorStop(0.5, '#8d8d8d'); st.addColorStop(1, '#cfcfcf');
+    c.fillStyle = st; c.fillRect(0, 70, 512, 60);
+    c.fillStyle = '#d9b86a'; c.font = 'bold 28px sans-serif';
+    c.fillText('PREMIUM', 330, 290);
+  } else if (kind === 'id') {
+    c.fillStyle = '#f4f3ee'; c.fillRect(0, 0, 512, 320);
+    c.fillStyle = '#2d4f8c'; c.fillRect(0, 0, 512, 56);
+    c.fillStyle = '#fff'; c.font = 'bold 28px sans-serif'; c.fillText('IDENTITY CARD', 30, 40);
+    c.fillStyle = '#b9bcc4'; c.fillRect(40, 80, 130, 170);
+    c.fillStyle = '#8a8f99';
+    c.beginPath(); c.arc(105, 130, 26, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(105, 220, 48, 40, 0, Math.PI, 0); c.fill();
+    c.fillStyle = '#777';
+    [[200, 100, 230], [200, 140, 190], [200, 180, 210], [200, 220, 150]].forEach(([x, y, w]) => c.fillRect(x, y, w, 14));
+  } else {
+    c.fillStyle = '#2c8a5a'; c.fillRect(0, 0, 512, 320);
+    c.fillStyle = '#fff';
+    c.beginPath(); c.arc(440, 60, 28, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#fff'; c.fillRect(40, 230, 300, 50);
+    c.fillStyle = '#111';
+    for (let x = 48; x < 330; x += 6) c.fillRect(x, 236, Math.random() < 0.5 ? 2 : 4, 38);
+    c.fillStyle = '#fff'; c.font = 'bold 30px sans-serif'; c.fillText('LOYALTY', 40, 120);
+  }
+  return new THREE.CanvasTexture(cv);
+}
+ 
+// одна карта: тонкий прямоугольник с лицевой стороной сверху
+function makeCard(kind, x, y, z, rx, ry) {
+  const edgeMat = new THREE.MeshStandardMaterial({ color: 0xe9e9e6, roughness: 0.4 });
+  const faceMat = new THREE.MeshStandardMaterial({ map: makeCardFace(kind), roughness: 0.35, metalness: 0.05 });
+  const card = new THREE.Mesh(
+    new THREE.BoxGeometry(0.86, 0.0076, 0.54),
+    [edgeMat, edgeMat, faceMat, edgeMat, edgeMat, edgeMat]
+  );
+  card.position.set(x, y, z);
+  card.rotation.set(rx, ry, 0);
+  card.castShadow = true;
+  return card;
+}
+ 
+// кардхолдер: два кожаных слоя, строчка, 4 карты — часть торчит из кармана
+function makeCardholder() {
+  const g = new THREE.Group();
+  const W = 1.05, H = 0.75, R = 0.05;
+  const leatherTex = makeLeatherTexture();
+  const leather = new THREE.MeshPhysicalMaterial({
+    map: leatherTex, bumpMap: leatherTex, bumpScale: 0.6,
+    color: 0xffffff, roughness: 0.55, clearcoat: 0.15, clearcoatRoughness: 0.4,
+  });
+ 
+  g.add(makePanel(W, H, R, 0.01, 0, leather));        // задняя панель
+  g.add(makePanel(W, H, R, 0.01, 0.042, leather));    // передняя панель (карманы)
+  addStitches(g, W, H, 0.052);                        // строчка по краю
+ 
+  // карты: от нижней к верхней, верхняя чуть приподнята
+  const cards = [
+    { kind: 'id',      y: 0.0138, rx: 0.00, ry:  0.02, x: 0.01  },
+    { kind: 'black',   y: 0.0214, rx: 0.02, ry: -0.02, x: -0.01 },
+    { kind: 'loyalty', y: 0.0290, rx: 0.015, ry:  0.03, x: 0.02  },
+    { kind: 'blue',    y: 0.0366, rx: 0.03, ry: -0.01, x: 0.00  },
+  ];
+  for (const cd of cards) {
+    g.add(makeCard(cd.kind, cd.x, cd.y, 0.16, cd.rx, cd.ry));
+  }
+ 
+  g.position.set(3.0, 0, 1.0);
+  g.rotation.y = -0.15;
+  return g;
+}
+ 
+function makeWallet() {
+  return makeCardholder();
+}
+ 
+function makeWalletOld() {
+  const g = new THREE.Group();
+  const leather = new THREE.MeshStandardMaterial({ color: 0x5a3418, roughness: 0.65, metalness: 0.02 });
+  const body = makeBoxWithFaces(1.1, 0.14, 0.8, [leather, leather, leather, leather, leather, leather]);
+  body.position.y = 0.07;
+  g.add(body);
+  const flap = makeBoxWithFaces(1.12, 0.03, 0.82, [leather, leather, leather, leather, leather, leather]);
+  flap.position.set(0, 0.155, 0);
+  g.add(flap);
+ 
+  const cardsDef = [
+    { color: '#2a5fbf', label: 'CARD', x: 0.2, y: 0.17, z: 0.02, ry: 0.04 },
+    { color: '#c9a227', label: 'GOLD', x: 0.22, y: 0.19, z: -0.02, ry: -0.05 },
+    { color: '#2c8a5a', label: 'ID', x: 0.18, y: 0.2, z: 0.07, ry: 0.07 },
+  ];
+  const edgeMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 });
+  for (const cd of cardsDef) {
+    const faceMat = new THREE.MeshStandardMaterial({ map: makeCardTexture(cd.color, cd.label), roughness: 0.3 });
+    const card = makeBoxWithFaces(0.62, 0.012, 0.38, [edgeMat, edgeMat, faceMat, edgeMat, edgeMat, edgeMat]);
+    card.position.set(cd.x, cd.y, cd.z);
+    card.rotation.y = cd.ry;
+    g.add(card);
+  }
+ 
+  g.position.set(3.0, 0, 1.0);
+  g.rotation.y = -0.15;
+  return g;
+}
+ 
+// --- телефон ---
+function makePhoneScreenTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 512;
+  const c = cv.getContext('2d');
+  const grad = c.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, '#2b1f5c'); grad.addColorStop(1, '#0b3b5e');
+  c.fillStyle = grad; c.fillRect(0, 0, 256, 512);
+  const colors = ['#ff5a5f', '#ffb400', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6', '#fb923c', '#e5e7eb'];
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 4; col++) {
+      c.fillStyle = colors[(row * 4 + col) % colors.length];
+      c.beginPath();
+      c.roundRect(24 + col * 56, 90 + row * 70, 42, 42, 9);
+      c.fill();
+    }
+  }
+  c.fillStyle = 'rgba(255,255,255,0.8)';
+  c.font = 'bold 20px sans-serif';
+  c.fillText('9:41', 100, 40);
+  return new THREE.CanvasTexture(cv);
+}
+ 
+// скруглённый прямоугольник (для корпуса и экрана)
+function roundedRectShape(w, h, r) {
+  const s = new THREE.Shape();
+  const x = -w / 2, y = -h / 2;
+  s.moveTo(x + r, y);
+  s.lineTo(x + w - r, y);
+  s.quadraticCurveTo(x + w, y, x + w, y + r);
+  s.lineTo(x + w, y + h - r);
+  s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  s.lineTo(x + r, y + h);
+  s.quadraticCurveTo(x, y + h, x, y + h - r);
+  s.lineTo(x, y + r);
+  s.quadraticCurveTo(x, y, x + r, y);
+  return s;
+}
+ 
+function rrPath(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+ 
+// экран: обои, время, иконки, док, Dynamic Island
+function makeIPhoneScreenTexture() {
+  const W = 472, H = 1000;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+ 
+  const wp = c.createLinearGradient(0, 0, W, H);
+  wp.addColorStop(0, '#1f2a5c');
+  wp.addColorStop(0.45, '#6b4fb0');
+  wp.addColorStop(1, '#f2906b');
+  c.fillStyle = wp;
+  c.fillRect(0, 0, W, H);
+ 
+  // Dynamic Island
+  c.fillStyle = '#000';
+  rrPath(c, 170, 14, 132, 40, 20);
+  c.fill();
+ 
+  // статус-бар
+  c.fillStyle = '#fff';
+  c.font = '600 26px -apple-system, Helvetica, Arial, sans-serif';
+  c.textAlign = 'left';
+  c.fillText('9:41', 46, 40);
+  c.textAlign = 'right';
+  c.fillText('100%', W - 40, 40);
+ 
+  // время и дата
+  c.textAlign = 'center';
+  c.font = '300 118px -apple-system, Helvetica, Arial, sans-serif';
+  c.fillText('9:41', W / 2, 230);
+  c.font = '500 26px -apple-system, Helvetica, Arial, sans-serif';
+  c.fillText('Пятница, 6 ноября', W / 2, 272);
+ 
+  // иконки приложений
+  const colors = ['#ff5a5f', '#ffb400', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6', '#fb923c', '#e5e7eb',
+                  '#22c55e', '#0ea5e9', '#eab308', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#64748b'];
+  const size = 84, gap = 30;
+  const startX = (W - (4 * size + 3 * gap)) / 2;
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 4; col++) {
+      const x = startX + col * (size + gap);
+      const y = 330 + row * 130;
+      c.fillStyle = colors[row * 4 + col];
+      rrPath(c, x, y, size, size, 20);
+      c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.85)';
+      c.beginPath();
+      c.arc(x + size / 2, y + size / 2, 16, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+ 
+  // док
+  c.fillStyle = 'rgba(255,255,255,0.22)';
+  rrPath(c, 26, 850, W - 52, 120, 36);
+  c.fill();
+  const dockColors = ['#4ade80', '#38bdf8', '#ff5a5f', '#ffb400'];
+  for (let i = 0; i < 4; i++) {
+    c.fillStyle = dockColors[i];
+    rrPath(c, 60 + i * 100, 868, 84, 84, 20);
+    c.fill();
+  }
+ 
+  const tex = new THREE.CanvasTexture(cv);
+  tex.anisotropy = 4;
+  return tex;
+}
+ 
+// iPhone 15 Pro Max: 159.9 x 76.7 x 8.25 мм (1 единица = 10 см)
+function makePhone() {
+  const g = new THREE.Group();
+  const W = 0.767, L = 1.599, T = 0.0825, R = 0.06, BEV = 0.006;
+ 
+  // корпус: скруглённые края через экструзию с фаской
+  const bodyGeo = new THREE.ExtrudeGeometry(roundedRectShape(W, L, R), {
+    depth: T - 2 * BEV,
+    bevelEnabled: true,
+    bevelThickness: BEV,
+    bevelSize: 0.005,
+    bevelSegments: 5,
+    curveSegments: 16,
+  });
+  bodyGeo.center();
+  bodyGeo.rotateX(-Math.PI / 2);   // экструзия смотрит вверх
+ 
+  const titanium = new THREE.MeshStandardMaterial({ color: 0xb9b6ae, metalness: 0.9, roughness: 0.28 });
+  const backGlass = new THREE.MeshPhysicalMaterial({ color: 0xa9a49b, metalness: 0.2, roughness: 0.22, clearcoat: 0.6, clearcoatRoughness: 0.2 });
+  const body = new THREE.Mesh(bodyGeo, [backGlass, titanium]);   // группа 0 — грани, 1 — боковины
+  body.castShadow = true;
+  body.receiveShadow = true;
+  g.add(body);
+ 
+  // чёрная рамка дисплея
+  const bezel = new THREE.Mesh(
+    new THREE.ShapeGeometry(roundedRectShape(W - 0.018, L - 0.018, R - 0.006), 8),
+    new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.15 })
+  );
+  bezel.geometry.rotateX(-Math.PI / 2);
+  bezel.position.y = T / 2 + 0.0005;
+  g.add(bezel);
+ 
+  // экран с текстурой
+  const dW = W - 0.03, dL = L - 0.03, dR = R - 0.012;
+  const dGeo = new THREE.ShapeGeometry(roundedRectShape(dW, dL, dR), 8);
+  dGeo.rotateX(-Math.PI / 2);
+  const uv = dGeo.attributes.uv, pos = dGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    uv.setXY(i, (x + dW / 2) / dW, (-z + dL / 2) / dL);
+  }
+  const screenMat = new THREE.MeshStandardMaterial({
+    map: makeIPhoneScreenTexture(), roughness: 0.12, metalness: 0,
+    emissive: 0x202030, emissiveIntensity: 0.25,
+  });
+  const screen = new THREE.Mesh(dGeo, screenMat);
+  screen.position.y = T / 2 + 0.0015;
+  g.add(screen);
+ 
+  // боковые кнопки: action и громкость слева, питание справа
+  const btn = (w, h, d, x, z) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), titanium);
+    m.position.set(x, 0, z);
+    m.castShadow = true;
+    g.add(m);
+  };
+  btn(0.008, 0.02, 0.03, -W / 2 - 0.003, -0.6);    // action
+  btn(0.008, 0.07, 0.03, -W / 2 - 0.003, -0.45);   // громкость +
+  btn(0.008, 0.07, 0.03, -W / 2 - 0.003, -0.32);   // громкость −
+  btn(0.008, 0.1, 0.03, W / 2 + 0.003, -0.42);     // питание
+ 
+  g.position.set(3.0, T / 2, -0.9);
+  g.rotation.y = 0.2;
+  return g;
+}
+ 
+function makePhoneOld() {
+  const g = new THREE.Group();
+  const body = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.25, metalness: 0.6 });
+  const screen = new THREE.MeshStandardMaterial({ map: makePhoneScreenTexture(), roughness: 0.1, metalness: 0.1, emissive: 0x111122, emissiveIntensity: 0.3 });
+  const mesh = makeBoxWithFaces(1.45, 0.08, 0.7, [body, body, screen, body, body, body]);
+  mesh.position.y = 0.04;
+  g.add(mesh);
+  g.position.set(3.0, 0, -0.9);
+  g.rotation.y = 0.2;
+  return g;
+}
+ 
+// --- ваза с цветами ---
+function makeRose(color) {
+  const g = new THREE.Group();
+  const petalMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, side: THREE.DoubleSide });
+  for (let layer = 0; layer < 3; layer++) {
+    const count = 5 + layer;
+    for (let p = 0; p < count; p++) {
+      const a = (p / count) * Math.PI * 2 + layer * 0.5;
+      const petal = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), petalMat);
+      petal.scale.set(1.2, 0.6, 1.0);
+      petal.position.set(Math.cos(a) * (0.02 + layer * 0.03), 0.02 * layer, Math.sin(a) * (0.02 + layer * 0.03));
+      petal.rotation.y = -a;
+      g.add(petal);
+    }
+  }
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshStandardMaterial({ color: new THREE.Color(color).multiplyScalar(0.6), roughness: 0.6 }));
+  core.position.y = 0.05;
+  g.add(core);
+  return g;
+}
+ 
+function makeDaisy() {
+  const g = new THREE.Group();
+  const petalMat = new THREE.MeshStandardMaterial({ color: 0xfbfbf5, roughness: 0.5, side: THREE.DoubleSide });
+  for (let p = 0; p < 12; p++) {
+    const a = (p / 12) * Math.PI * 2;
+    const petal = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), petalMat);
+    petal.scale.set(2.2, 0.25, 0.8);
+    petal.position.set(Math.cos(a) * 0.08, 0, Math.sin(a) * 0.08);
+    petal.rotation.y = -a;
+    g.add(petal);
+  }
+  const center = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffc83d, roughness: 0.5 }));
+  center.position.y = 0.02;
+  g.add(center);
+  return g;
+}
+ 
+function makeVase() {
+  const g = new THREE.Group();
+  const profile = [
+    new THREE.Vector2(0.0, 0), new THREE.Vector2(0.36, 0), new THREE.Vector2(0.46, 0.35),
+    new THREE.Vector2(0.44, 0.7), new THREE.Vector2(0.28, 1.05), new THREE.Vector2(0.16, 1.25),
+    new THREE.Vector2(0.2, 1.35), new THREE.Vector2(0.22, 1.38),
+  ];
+  const ceramic = new THREE.MeshPhysicalMaterial({ color: 0x2f6fa8, roughness: 0.2, clearcoat: 0.8, clearcoatRoughness: 0.1 });
+  const vaseMesh = new THREE.Mesh(new THREE.LatheGeometry(profile, 40), ceramic);
+  vaseMesh.castShadow = true;
+  vaseMesh.receiveShadow = true;
+  g.add(vaseMesh);
+ 
+  const water = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.2, 0.2, 0.02, 24),
+    new THREE.MeshStandardMaterial({ color: 0x3a8fb0, transparent: true, opacity: 0.6, roughness: 0.1 })
+  );
+  water.position.y = 1.2;
+  g.add(water);
+ 
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x3f8f3f, roughness: 0.7 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.6, side: THREE.DoubleSide });
+  const heads = [
+    { type: 'rose', color: 0xd7263d, x: 0.25, y: 2.25, z: 0.1 },
+    { type: 'daisy', x: -0.2, y: 2.05, z: 0.2 },
+    { type: 'rose', color: 0xf27ba7, x: 0.05, y: 2.5, z: -0.2 },
+    { type: 'daisy', x: -0.35, y: 2.3, z: -0.25 },
+    { type: 'rose', color: 0xffa94d, x: 0.35, y: 2.0, z: -0.1 },
+  ];
+  for (const h of heads) {
+    const start = new THREE.Vector3(rnd(-0.05, 0.05), 1.1, rnd(-0.05, 0.05));
+    const end = new THREE.Vector3(h.x, h.y - 0.05, h.z);
+    const mid = new THREE.Vector3((start.x + end.x) / 2, (start.y + end.y) / 2 + 0.1, (start.z + end.z) / 2);
+    const curve = new THREE.CatmullRomCurve3([start, mid, end]);
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.012, 6, false), stemMat));
+ 
+    const head = h.type === 'rose' ? makeRose(h.color) : makeDaisy();
+    head.position.copy(end);
+    head.rotation.y = rnd(0, Math.PI * 2);
+    g.add(head);
+ 
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 6), leafMat);
+    leaf.scale.set(1.6, 0.08, 0.6);
+    const lp = mid.clone();
+    leaf.position.copy(lp);
+    leaf.rotation.set(rnd(-0.4, 0.4), rnd(0, Math.PI * 2), rnd(-0.5, 0.5));
+    g.add(leaf);
+  }
+ 
+  g.position.set(-2.9, 0, -0.9);
+  return g;
+}
+ 
+tableItems.add(makeCigarettePack());
+tableItems.add(makeWallet());
+const phoneObj = makePhone();
+tableItems.add(phoneObj);
+tableItems.add(makeVase());
+ 
+// ================= корм, управление и поведение рыб =================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const tankPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+const surfacePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -SURF_Y);
+const hit = new THREE.Vector3();
+ 
+let camTheta = 0.35, camPhi = 1.2, camR = 9.5;
+const camTarget = new THREE.Vector3(0, 0.9, 0);
+function updateCamera() {
+  camera.position.set(
+    camTarget.x + camR * Math.sin(camPhi) * Math.sin(camTheta),
+    camTarget.y + camR * Math.cos(camPhi),
+    camTarget.z + camR * Math.sin(camPhi) * Math.cos(camTheta)
+  );
+  camera.lookAt(camTarget);
+}
+updateCamera();
+ 
+let dragging = false, dragMoved = false, lastX = 0, lastY = 0, downX = 0, downY = 0;
+const canvas = renderer.domElement;
+canvas.addEventListener('pointerdown', (e) => {
+  dragging = true; dragMoved = false;
+  lastX = downX = e.clientX; lastY = downY = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  if (Math.abs(e.clientX - downX) + Math.abs(e.clientY - downY) > 5) dragMoved = true;
+  camTheta -= dx * 0.005;
+  camPhi = Math.min(1.5, Math.max(0.3, camPhi - dy * 0.005));
+  lastX = e.clientX; lastY = e.clientY;
+  updateCamera();
+});
+canvas.addEventListener('pointerup', (e) => {
+  dragging = false;
+  if (!dragMoved) onTankClick(e.clientX, e.clientY);
+});
+canvas.addEventListener('wheel', (e) => {
+  camR = Math.min(16, Math.max(4, camR + e.deltaY * 0.01));
+  updateCamera();
+}, { passive: true });
+ 
+function setMouse(cx, cy) {
+  mouse.x = (cx / window.innerWidth) * 2 - 1;
+  mouse.y = -(cy / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+}
+ 
+const foodDropPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+function onTankClick(cx, cy) {
+  setMouse(cx, cy);
+  if (raycaster.ray.intersectPlane(foodDropPlane, hit)) {
+    if (Math.abs(hit.x) < BOUNDS.x + 0.1 && hit.y > 0.5 && hit.y < TANK_H) {
+      const x = Math.min(BOUNDS.x, Math.max(-BOUNDS.x, hit.x));
+      for (let i = 0; i < 6; i++) {
+        const m = new THREE.Mesh(foodGeo, foodMat);
+        m.position.set(x + (Math.random() - 0.5) * 0.4, TANK_H + 0.05, (Math.random() - 0.5) * 0.4);
+        tank.add(m);
+        foods.push({ mesh: m, vy: -0.2 - Math.random() * 0.1 });
+      }
+    }
+  }
+  if (raycaster.ray.intersectPlane(surfacePlane, hit)) {
+    if (hit.x > -WATER_W / 2 && hit.x < WATER_W / 2 && hit.z > -WATER_D / 2 && hit.z < WATER_D / 2) {
+      addRipple(hit.x, hit.z, 0.09);
+    }
+  }
+  document.getElementById('hint').style.opacity = 0;
+}
+ 
+// ================= перетаскивание телефона =================
+const PHONE_BASE_Y = 0.04125;            // половина толщины телефона: лежит на столе
+const PHONE_HX = 0.45, PHONE_HZ = 0.9;   // half-размеры телефона для проверки столкновений
+const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const phoneDrag = { active: false, dx: 0, dz: 0 };
+let phoneRotTarget = phoneObj.rotation.y;
+ 
+function tableHit(cx, cy) {
+  setMouse(cx, cy);
+  return raycaster.ray.intersectPlane(tablePlane, new THREE.Vector3());
+}
+function isPhoneUnder(cx, cy) {
+  setMouse(cx, cy);
+  return raycaster.intersectObject(phoneObj, true).length > 0;
+}
+// телефон не проходит сквозь аквариум
+function phoneBlocked(x, z) {
+  return Math.abs(x) < TANK_W / 2 + 0.1 + PHONE_HX && Math.abs(z) < TANK_D / 2 + 0.1 + PHONE_HZ;
+}
+ 
+// захват телефона в фазе захвата, чтобы камера не вращалась
+canvas.addEventListener('pointerdown', (e) => {
+  if (!isPhoneUnder(e.clientX, e.clientY)) return;
+  e.stopImmediatePropagation();
+  const p = tableHit(e.clientX, e.clientY);
+  if (!p) return;
+  phoneDrag.active = true;
+  phoneDrag.dx = phoneObj.position.x - p.x;
+  phoneDrag.dz = phoneObj.position.z - p.z;
+  canvas.setPointerCapture(e.pointerId);
+  canvas.style.cursor = 'grabbing';
+}, { capture: true });
+ 
+canvas.addEventListener('pointermove', (e) => {
+  if (!phoneDrag.active) {
+    canvas.style.cursor = isPhoneUnder(e.clientX, e.clientY) ? 'grab' : '';
+    return;
+  }
+  e.stopImmediatePropagation();
+  const p = tableHit(e.clientX, e.clientY);
+  if (!p) return;
+  const nx = Math.min(3.6, Math.max(-3.6, p.x + phoneDrag.dx));
+  const nz = Math.min(1.9, Math.max(-1.9, p.z + phoneDrag.dz));
+  if (!phoneBlocked(nx, nz)) {
+    phoneObj.position.x = nx;
+    phoneObj.position.z = nz;
+  } else if (!phoneBlocked(nx, phoneObj.position.z)) {
+    phoneObj.position.x = nx;
+  } else if (!phoneBlocked(phoneObj.position.x, nz)) {
+    phoneObj.position.z = nz;
+  }
+}, { capture: true });
+ 
+canvas.addEventListener('pointerup', (e) => {
+  if (!phoneDrag.active) return;
+  e.stopImmediatePropagation();
+  phoneDrag.active = false;
+  canvas.style.cursor = '';
+}, { capture: true });
+ 
+// R — повернуть телефон на 90°
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'r' || e.key === 'R' || e.key === 'к' || e.key === 'К') {
+    phoneRotTarget += Math.PI / 2;
+  }
+});
+ 
+const waveBtn = document.getElementById('waveBtn');
+waveBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  wavesOn = !wavesOn;
+  waveBtn.textContent = 'Волны: ' + (wavesOn ? 'вкл' : 'выкл');
+  if (!wavesOn) ripples.length = 0;
+});
+ 
+const tmpSep = new THREE.Vector3(), tmpAli = new THREE.Vector3(), tmpCoh = new THREE.Vector3();
+const tmpDiff = new THREE.Vector3(), tmpDesired = new THREE.Vector3(), tmpSteer = new THREE.Vector3();
+ 
+function updateFishes(dt) {
+  for (const f of fishes) {
+    let nearestFood = null, minD = 1.8;
+    for (const fd of foods) {
+      const d = fd.mesh.position.distanceTo(f.pos);
+      if (d < minD) { minD = d; nearestFood = fd; }
+    }
+    if (nearestFood) {
+      f.target.copy(nearestFood.mesh.position);
+      f.hasTarget = true;
+      if (minD < 0.2) {
+        tank.remove(nearestFood.mesh);
+        foods.splice(foods.indexOf(nearestFood), 1);
+        f.eatT = 0.5;
+      }
+    } else if (!f.hasTarget || f.pos.distanceTo(f.target) < 0.35 || Math.random() < 0.003) {
+      pickWanderTarget(f);
+    }
+ 
+    tmpSep.set(0, 0, 0); tmpAli.set(0, 0, 0); tmpCoh.set(0, 0, 0);
+    let n = 0;
+    for (const g of fishes) {
+      if (g === f) continue;
+      tmpDiff.subVectors(f.pos, g.pos);
+      const d = tmpDiff.length();
+      if (d < 1.5) {
+        tmpAli.add(g.vel);
+        tmpCoh.add(g.pos);
+        n++;
+        if (d < 0.5 && d > 0.0001) tmpSep.addScaledVector(tmpDiff, (0.5 - d) / d * 1.5);
+      }
+    }
+    tmpSteer.set(0, 0, 0).add(tmpSep).multiplyScalar(3);
+    if (n > 0) {
+      tmpAli.divideScalar(n).sub(f.vel);
+      tmpCoh.divideScalar(n).sub(f.pos);
+      tmpSteer.addScaledVector(tmpAli, 0.8 * f.school);
+      tmpSteer.addScaledVector(tmpCoh, 0.3 * f.school);
+    }
+ 
+    if (f.hasTarget) {
+      tmpDesired.subVectors(f.target, f.pos);
+      if (tmpDesired.lengthSq() > 1e-6) tmpDesired.normalize();
+      const boost = f.burstT > 0 ? 1.8 : 1.0;
+      const want = f.baseSpeed * boost * (f.eatT > 0 ? 0.6 : 1.0);
+      tmpDesired.multiplyScalar(want);
+      tmpSteer.addScaledVector(tmpDesired.sub(f.vel), 1.0);
+    }
+ 
+    if (f.pos.x > BOUNDS.x - 0.25) tmpSteer.x -= 2;
+    if (f.pos.x < -BOUNDS.x + 0.25) tmpSteer.x += 2;
+    if (f.pos.y > BOUNDS.yMax - 0.15) tmpSteer.y -= 2;
+    if (f.pos.y < BOUNDS.yMin + 0.15) tmpSteer.y += 2;
+    if (f.pos.z > BOUNDS.z - 0.2) tmpSteer.z -= 2;
+    if (f.pos.z < -BOUNDS.z + 0.2) tmpSteer.z += 2;
+ 
+    f.vel.addScaledVector(tmpSteer, dt * 2.5);
+ 
+    f.burstT -= dt;
+    f.eatT -= dt;
+    if (f.burstT <= 0 && Math.random() < dt * 0.08) f.burstT = 0.6;
+    const sp = f.vel.length();
+    const maxSp = f.baseSpeed * (f.burstT > 0 ? 1.8 : 1.0);
+    const minSp = f.baseSpeed * 0.5;
+    if (sp > maxSp) f.vel.multiplyScalar(maxSp / sp);
+    else if (sp < minSp && sp > 1e-4) f.vel.multiplyScalar(minSp / sp);
+ 
+    f.pos.addScaledVector(f.vel, dt);
+    f.pos.x = Math.min(BOUNDS.x, Math.max(-BOUNDS.x, f.pos.x));
+    f.pos.y = Math.min(BOUNDS.yMax, Math.max(BOUNDS.yMin, f.pos.y));
+    f.pos.z = Math.min(BOUNDS.z, Math.max(-BOUNDS.z, f.pos.z));
+  }
+}
+ 
+function animateFishVisuals() {
+  for (const f of fishes) {
+    const vx = f.vel.x, vy = f.vel.y, vz = f.vel.z;
+    const hSp = Math.sqrt(vx * vx + vz * vz);
+    const speedNorm = f.vel.length() / f.baseSpeed;
+ 
+    f.beatFreq = 6 + speedNorm * 5;
+ 
+    f.group.position.copy(f.pos);
+    f.group.position.y += Math.sin(time * 1.5 + f.phase) * 0.01;
+    f.group.rotation.y = Math.atan2(-vz, vx);
+    f.group.rotation.z = Math.atan2(vy, Math.max(hSp, 0.0001)) * 0.8;
+    f.group.rotation.x = Math.sin(time * 2 + f.phase) * 0.03;
+ 
+    updateBody(f);
+ 
+    f.tailPivot.rotation.y = Math.sin(time * f.beatFreq + f.phase - 0.3 * 7) * 0.25;
+ 
+    const flap = f.burstT > 0 ? 10 : 4;
+    f.pectorals.forEach((p, i) => { p.rotation.z = Math.sin(time * flap + f.phase + i * 3) * 0.3; });
+ 
+    for (const fin of f.fins) updateFin(fin);
+ 
+    f.mouth.scale.y = f.eatT > 0 ? 2.2 : 0.8;
+    f.mouth.scale.x = f.eatT > 0 ? 1.4 : 1.0;
+  }
+}
+ 
+// ================= растения в аквариуме: покачивание =================
+// ================= анимация =================
+const clock = new THREE.Clock();
+ 
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  time += dt;
+  causticMat.uniforms.uTime.value = time;
+ 
+  for (let i = foods.length - 1; i >= 0; i--) {
+    const fd = foods[i];
+    fd.vy -= dt * 0.4;
+    fd.mesh.position.y += fd.vy * dt;
+    if (fd.mesh.position.y < 0.35) {
+      tank.remove(fd.mesh);
+      foods.splice(i, 1);
+    }
+  }
+ 
+  updateFishes(dt);
+ 
+  for (const f of fishes) {
+    const sp = f.vel.length();
+    f.wakeTimer -= dt;
+    if (wavesOn && sp > 0.3 && f.wakeTimer <= 0) {
+      addRipple(f.pos.x, f.pos.z, 0.012 * sp * (0.5 + f.pos.y / SURF_Y));
+      f.wakeTimer = 0.5 + Math.random() * 0.3;
+    }
+  }
+ 
+  animateFishVisuals();
+ 
+  bubbleTimer += dt;
+  if (bubbleTimer > 0.35) {
+    bubbleTimer = 0;
+    const r = 0.02 + Math.random() * 0.03;
+    const m = new THREE.Mesh(bubbleGeo, bubbleMat);
+    m.scale.setScalar(r);
+    m.position.copy(BUBBLER);
+    tank.add(m);
+    bubbles.push({ mesh: m, speed: 0.35 + Math.random() * 0.3, wob: Math.random() * 6 });
+  }
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    b.mesh.position.y += b.speed * dt;
+    b.mesh.position.x += Math.sin(time * 3 + b.wob) * 0.002;
+    if (b.mesh.position.y > SURF_Y - 0.02) {
+      addRipple(b.mesh.position.x, b.mesh.position.z, 0.008);
+      tank.remove(b.mesh);
+      bubbles.splice(i, 1);
+    }
+  }
+ 
+  for (let i = 0; i < plants.length; i++) {
+    plants[i].rotation.z = Math.sin(time * 0.9 + i) * 0.05;
+    plants[i].rotation.x = Math.cos(time * 0.7 + i * 1.3) * 0.04;
+  }
+ 
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    if (time - ripples[i].t0 > 6) ripples.splice(i, 1);
+  }
+ 
+  // телефон приподнимается при перетаскивании и плавно поворачивается
+  const phoneTargetY = phoneDrag.active ? PHONE_BASE_Y + 0.15 : PHONE_BASE_Y;
+  phoneObj.position.y += (phoneTargetY - phoneObj.position.y) * Math.min(1, dt * 12);
+  phoneObj.rotation.y += (phoneRotTarget - phoneObj.rotation.y) * Math.min(1, dt * 10);
+ 
+  updateSurface();
+  tankLight.intensity = 1.0 + Math.sin(time * 1.5) * 0.1;
+ 
+  renderer.render(scene, camera);
+}
+ 
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+ 
+animate();
 </script>
 </body>
 </html>
+ 
